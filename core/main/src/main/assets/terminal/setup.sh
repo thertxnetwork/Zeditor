@@ -4,16 +4,21 @@ source "$LOCAL/bin/utils"
 
 info "Extracting the Ubuntu container…"
 
-# Extract the rootfs directly without proot
-# proot is not needed for extraction - we're just unpacking files
-if ! cd "$LOCAL/sandbox"; then
-    error "Failed to change directory to $LOCAL/sandbox"
-    exit 1
-fi
+# Extract the rootfs using proot with --link2symlink
+# This converts hard links to symbolic links, which is necessary on Android
+# where hard link creation may be restricted
+cd "$LOCAL/sandbox" || exit 1
 
-if ! tar -xf "$TMP_DIR/sandbox.tar.gz"; then
-    error "Failed to extract Ubuntu container"
-    exit 1
+if [ "$FDROID" = "false" ]; then
+    if ! $LINKER "$LOCAL/bin/proot" --link2symlink tar -xf "$TMP_DIR/sandbox.tar.gz"; then
+        error "Failed to extract Ubuntu container"
+        exit 1
+    fi
+else
+    if ! "$LOCAL/bin/proot" --link2symlink tar -xf "$TMP_DIR/sandbox.tar.gz"; then
+        error "Failed to extract Ubuntu container"
+        exit 1
+    fi
 fi
 
 
