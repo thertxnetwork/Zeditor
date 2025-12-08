@@ -18,9 +18,6 @@ class XML() : BaseLspServer() {
         // TODO: Implement installation check without terminal dependency
         return false
     }
-        return localDir().child("org.eclipse.lemminx.uber-jar_0.31.0.jar").exists() &&
-            sandboxDir().child("bin/java").exists()
-    }
 
     override fun install(context: Context) {
         // TODO: Implement LSP installation without terminal dependency

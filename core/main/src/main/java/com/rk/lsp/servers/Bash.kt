@@ -23,9 +23,6 @@ class Bash() : BaseLspServer() {
         return false
     }
 
-        return sandboxDir().child("/usr/bin/bash-language-server").exists()
-    }
-
     override fun install(context: Context) {
         // TODO: Implement LSP installation without terminal dependency
         // The terminal-based installation has been removed

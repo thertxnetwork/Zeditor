@@ -1,14 +1,15 @@
 package com.rk.lsp
 
 import android.util.Log
-import com.rk.exec.readStderr
 import com.rk.utils.toast
 import com.thertxnetwork.zeditor.core.main.BuildConfig
 import io.github.rosemoe.sora.lsp.client.connection.StreamConnectionProvider
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 class ProcessConnection(private val cmd: Array<String>) : StreamConnectionProvider {
 
@@ -19,6 +20,18 @@ class ProcessConnection(private val cmd: Array<String>) : StreamConnectionProvid
 
     override val outputStream: OutputStream
         get() = process?.outputStream ?: throw IllegalStateException("Process not running")
+    
+    private suspend fun Process.readStderr(): String =
+        withContext(Dispatchers.IO) {
+            try {
+                errorStream.bufferedReader().use { reader ->
+                    if (errorStream.available() <= 0) return@use ""
+                    reader.readText()
+                }
+            } catch (e: Exception) {
+                ""
+            }
+        }
 
     override fun start() {
         if (process != null) return
