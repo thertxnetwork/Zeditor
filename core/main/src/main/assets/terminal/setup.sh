@@ -7,15 +7,15 @@ info "Extracting the Ubuntu container…"
 # Extract the rootfs using proot with --link2symlink
 # This converts hard links to symbolic links, which is necessary on Android
 # where hard link creation may be restricted
-cd "$LOCAL/sandbox" || exit 1
+COMMAND="cd '$LOCAL/sandbox' && tar -xf '$TMP_DIR/sandbox.tar.gz'"
 
 if [ "$FDROID" = "false" ]; then
-    if ! $LINKER "$LOCAL/bin/proot" --link2symlink tar -xf "$TMP_DIR/sandbox.tar.gz"; then
+    if ! $LINKER "$LOCAL/bin/proot" --link2symlink -w / /system/bin/sh -c "$COMMAND"; then
         error "Failed to extract Ubuntu container"
         exit 1
     fi
 else
-    if ! "$LOCAL/bin/proot" --link2symlink tar -xf "$TMP_DIR/sandbox.tar.gz"; then
+    if ! "$LOCAL/bin/proot" --link2symlink -w / /system/bin/sh -c "$COMMAND"; then
         error "Failed to extract Ubuntu container"
         exit 1
     fi
