@@ -4,11 +4,14 @@ shopt -s checkwinsize
 
 source "$PRIVATE_DIR/local/bin/utils"
 
+# Ensure we use Ubuntu's binaries, not Android's
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PRIVATE_DIR/local/bin
+
 # Set timezone
 CONTAINER_TIMEZONE="UTC"  # or any timezone like "Asia/Kolkata"
 
 # Symlink /etc/localtime to the desired timezone
-ln -snf "/usr/share/zoneinfo/$CONTAINER_TIMEZONE" /etc/localtime
+/bin/ln -snf "/usr/share/zoneinfo/$CONTAINER_TIMEZONE" /etc/localtime 2>/dev/null || true
 
 # Write the timezone string to /etc/timezone
 echo "$CONTAINER_TIMEZONE" > /etc/timezone
@@ -55,9 +58,49 @@ if [[ -f ~/.bashrc ]]; then
 fi
 
 
-export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/games:/usr/local/bin:/usr/local/sbin:$PRIVATE_DIR/local/bin:$PATH
+# Set final PATH with Ubuntu binaries prioritized over Android system
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/games:/usr/local/bin:/usr/local/sbin:$PRIVATE_DIR/local/bin
 export SHELL="bash"
 export PS1="\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\] \\$ "
+
+# Configure DNS for the container
+setup_dns() {
+    # Try to get DNS servers from Android system properties
+    local dns_servers=()
+    
+    # Try to get DNS servers from Android's getprop (available on Android host)
+    if command -v getprop >/dev/null 2>&1; then
+        # Try different property names that might contain DNS info
+        for prop in net.dns1 net.dns2 net.dns3 net.dns4; do
+            local dns=$(getprop "$prop" 2>/dev/null)
+            if [ -n "$dns" ] && [ "$dns" != "0.0.0.0" ]; then
+                dns_servers+=("$dns")
+            fi
+        done
+    fi
+    
+    # If no DNS servers found, use Google's public DNS as fallback
+    if [ ${#dns_servers[@]} -eq 0 ]; then
+        dns_servers=("8.8.8.8" "8.8.4.4" "1.1.1.1" "1.0.0.1")
+    fi
+    
+    # Write DNS configuration to /etc/resolv.conf
+    {
+        echo "# DNS configuration for Ubuntu container"
+        echo "# Generated dynamically from Android system or fallback"
+        for dns in "${dns_servers[@]}"; do
+            echo "nameserver $dns"
+        done
+        echo ""
+        echo "options ndots:0"
+    } > /etc/resolv.conf
+    
+    # Make sure resolv.conf is readable
+    chmod 644 /etc/resolv.conf
+}
+
+# Setup DNS before attempting package operations
+setup_dns
 
 ensure_packages_once() {
     local marker_file="/.cache/.packages_ensured"
