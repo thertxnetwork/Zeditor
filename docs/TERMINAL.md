@@ -1,7 +1,12 @@
 # Terminal Feature Testing Guide
 
 ## Overview
-The terminal integration allows you to run code and shell scripts directly from Zeditor. The implementation is based on a custom TerminalView component that interfaces with Android's Process API.
+The terminal integration allows you to run code and shell scripts directly from Zeditor. The implementation uses **Termux's terminal-view and terminal-emulator libraries**, providing a professional terminal experience with features like:
+- Full ANSI escape code support and colors
+- zsh/bash syntax highlighting (when using those shells)
+- Better text rendering and scrolling
+- Support for complex terminal applications (nano, vim, etc.)
+- Advanced terminal features from the Termux project
 
 ## How to Access the Terminal
 
@@ -93,19 +98,23 @@ console.log("Process ID:", process.pid);
 
 ### Input Methods
 - **Input Field**: Type commands in the bottom input field and press send button or Enter
-- **Keyboard**: Direct keyboard input is also captured by the terminal view
+- **Keyboard**: Direct keyboard input is captured by the terminal view
+- **Touch**: Tap terminal to show keyboard
 
-### Display Features
-- Green text on black background (classic terminal look)
-- Monospace font for proper alignment
-- Auto-scrolling to bottom as new output appears
-- Maximum 5000 lines buffered
+### Display Features (via Termux Terminal)
+- Full ANSI escape code support with 256 colors
+- Proper text rendering with ligatures and Unicode support
+- Smooth scrolling and text selection
+- Customizable terminal themes
+- Support for complex terminal applications (nano, vim, htop, etc.)
+- Proper handling of control characters
 
 ### Process Handling
-- Terminal runs in a separate process
-- Output is streamed in real-time
-- Input is queued and sent to the process
+- Terminal runs in a separate process using Termux's TerminalSession
+- Output is streamed in real-time with proper buffering
+- Input is sent directly to the process
 - Session ends when process completes
+- Support for interactive programs
 
 ## Known Limitations
 
@@ -113,11 +122,7 @@ console.log("Process ID:", process.pid);
    - Python: Usually available on Android
    - Node.js, Ruby, Go, etc.: May need to be installed via Termux or similar
 
-2. **ANSI Escape Codes**: Basic control characters are handled (\n, \r, \b), but full ANSI color codes are not yet implemented
-
-3. **Interactive Programs**: Programs that require complex terminal features (like ncurses) may not work properly
-
-4. **Working Directory**: Scripts run in their parent directory, but compiled languages need write access to compile
+2. **Working Directory**: Scripts run in their parent directory, but compiled languages need write access to compile
 
 ## Troubleshooting
 
@@ -139,12 +144,10 @@ console.log("Process ID:", process.pid);
 ## Future Enhancements
 
 Potential improvements for the terminal feature:
-- Full ANSI escape code support for colors
-- Text selection and copy/paste
-- Gesture-based scrolling
-- Terminal themes and customization
+- Terminal themes and additional customization options
 - Tab support for multiple terminal sessions
-- Integration with Termux for full Linux environment (as described in ubuntu_terminal_blog.md)
+- Integration with Termux packages for full Linux environment
+- Full PRoot/Ubuntu integration (as described in ubuntu_terminal_blog.md)
 
 ## Reference
-The terminal implementation is inspired by the blog post `ubuntu_terminal_blog.md` which describes building a full Ubuntu terminal emulator with PRoot support.
+The terminal implementation uses **Termux's terminal-view and terminal-emulator libraries** from the [Termux project](https://github.com/termux/termux-app), which provides a professional-grade terminal emulator for Android. The blog post `ubuntu_terminal_blog.md` describes how to extend this with full Ubuntu rootfs and PRoot support.

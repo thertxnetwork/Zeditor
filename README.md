@@ -23,10 +23,12 @@ Or for debug builds:
 - Syntax highlighting for multiple programming languages
 - Extensive customization options
 - Streamlined interface for efficient editing
-- **Terminal support** - Integrated terminal for running code and shell scripts
+- **Terminal support** - Integrated terminal powered by Termux libraries
+  - Professional terminal emulator with full ANSI color support
   - Run Python, JavaScript, Java, Kotlin, C/C++, Rust, and many more languages
   - Execute shell scripts directly from the editor
-  - Custom terminal view with process I/O handling
+  - Support for complex terminal apps (nano, vim, htop, etc.)
+  - zsh/bash syntax highlighting when using those shells
   - Access terminal via top bar button or "Add" menu
 - LSP (Language Server Protocol) support
 

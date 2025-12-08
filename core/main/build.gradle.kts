@@ -141,6 +141,10 @@ dependencies {
     // implementation(project(":core:extension"))
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidsvg.aar)
+    
+    // Termux terminal libraries
+    implementation(libs.termux.terminal.view)
+    implementation(libs.termux.terminal.emulator)
 }
 
 abstract class GenerateSupportedLocales : DefaultTask() {
