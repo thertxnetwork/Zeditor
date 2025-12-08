@@ -47,7 +47,7 @@ include(":core:extension")
 
 val soraX = file("soraX")
 
-if (!soraX.exists() || soraX.listFiles()?.isEmpty() != false) {
+if (!(soraX.exists() && soraX.listFiles()?.isNotEmpty() == true)) {
     throw GradleException(
         """
         The 'soraX' submodule is missing or empty.
