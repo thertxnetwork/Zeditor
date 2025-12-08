@@ -17,7 +17,7 @@ import com.rk.filetree.currentProject
 import com.rk.settings.Settings
 import com.rk.tabs.EditorTab
 import com.rk.utils.getSourceDirOfPackage
-import com.thertxnetwork.zeditor.BuildConfig
+import com.thertxnetwork.zeditor.core.main.BuildConfig
 import com.termux.terminal.TerminalEmulator
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient

@@ -17,7 +17,7 @@ import com.rk.settings.Settings
 import com.rk.settings.debugOptions.startThemeFlipperIfNotRunning
 import com.rk.theme.updateThemes
 import com.rk.utils.application
-import com.thertxnetwork.zeditor.BuildConfig
+import com.thertxnetwork.zeditor.core.main.BuildConfig
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors

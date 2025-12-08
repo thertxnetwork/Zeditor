@@ -10,7 +10,7 @@ import com.rk.file.localLibDir
 import com.rk.file.sandboxDir
 import com.rk.file.sandboxHomeDir
 import com.rk.utils.application
-import com.thertxnetwork.zeditor.BuildConfig
+import com.thertxnetwork.zeditor.core.main.BuildConfig
 import java.io.File
 import java.io.IOException
 import java.io.OutputStreamWriter

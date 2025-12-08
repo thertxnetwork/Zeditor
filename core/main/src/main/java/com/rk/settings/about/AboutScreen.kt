@@ -33,7 +33,7 @@ import com.rk.components.compose.preferences.base.PreferenceTemplate
 import com.rk.resources.getString
 import com.rk.resources.strings
 import com.rk.utils.copyToClipboard
-import com.thertxnetwork.zeditor.BuildConfig
+import com.thertxnetwork.zeditor.core.main.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient

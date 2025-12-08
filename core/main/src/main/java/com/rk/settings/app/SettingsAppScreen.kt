@@ -27,7 +27,7 @@ import com.rk.resources.strings
 import com.rk.settings.Preference
 import com.rk.settings.Settings
 import com.rk.utils.dialog
-import com.thertxnetwork.zeditor.BuildConfig
+import com.thertxnetwork.zeditor.core.main.BuildConfig
 
 data class Feature(val nameRes: Int, val key: String, val default: Boolean, val onChange: ((Boolean) -> Unit)? = null) {
     val state: MutableState<Boolean> by lazy { mutableStateOf(Preference.getBoolean(key, default)) }

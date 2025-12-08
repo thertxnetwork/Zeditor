@@ -42,7 +42,7 @@ import com.rk.resources.strings
 import com.rk.theme.XedTheme
 import com.rk.utils.origin
 import com.rk.utils.toast
-import com.thertxnetwork.zeditor.BuildConfig
+import com.thertxnetwork.zeditor.core.main.BuildConfig
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
