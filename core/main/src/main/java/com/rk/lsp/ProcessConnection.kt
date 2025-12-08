@@ -4,7 +4,7 @@ import android.util.Log
 import com.rk.exec.readStderr
 import com.rk.exec.ubuntuProcess
 import com.rk.utils.toast
-import com.thertxnetwork.zeditor.BuildConfig
+import com.thertxnetwork.zeditor.core.main.BuildConfig
 import io.github.rosemoe.sora.lsp.client.connection.StreamConnectionProvider
 import java.io.InputStream
 import java.io.OutputStream

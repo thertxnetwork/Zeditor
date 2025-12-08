@@ -7,7 +7,7 @@ import androidx.core.content.ContextCompat
 import com.rk.file.FileObject
 import com.rk.runner.RunnerImpl
 import com.rk.runner.runners.web.html.HtmlRunner
-import com.thertxnetwork.zeditor.R
+import com.thertxnetwork.zeditor.core.main.R
 import java.lang.ref.WeakReference
 
 var mdViewerRef = WeakReference<MDViewer?>(null)
