@@ -23,12 +23,15 @@ Or for debug builds:
 - Syntax highlighting for multiple programming languages
 - Extensive customization options
 - Streamlined interface for efficient editing
-- **Terminal support** - Integrated terminal powered by Termux libraries
-  - Professional terminal emulator with full ANSI color support
+- **Terminal support** - Integrated terminal with two modes
+  - **Standard Terminal**: Quick access for running code and shell scripts
+  - **Ubuntu Terminal (Full)**: Complete Ubuntu 22.04 with PRoot (no root required)
+    - Full apt package management
+    - Access to thousands of Ubuntu packages
+    - Persistent Linux environment
   - Run Python, JavaScript, Java, Kotlin, C/C++, Rust, and many more languages
   - Execute shell scripts directly from the editor
-  - Support for complex terminal apps (nano, vim, htop, etc.)
-  - zsh/bash syntax highlighting when using those shells
+  - Support for complex terminal apps in Ubuntu mode (nano, vim, htop, gcc, etc.)
   - Access terminal via top bar button or "Add" menu
 - LSP (Language Server Protocol) support
 

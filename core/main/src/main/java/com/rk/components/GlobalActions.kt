@@ -152,6 +152,15 @@ fun RowScope.GlobalActions(viewModel: MainViewModel) {
                     }
                     context.startActivity(intent)
                 }
+
+                AddDialogItem(icon = drawables.bash, title = "Ubuntu Terminal (Full)") {
+                    addDialog = false
+                    val intent = Intent(context, TerminalActivity::class.java).apply {
+                        putExtra(TerminalActivity.EXTRA_TITLE, "Ubuntu Terminal")
+                        putExtra(TerminalActivity.EXTRA_UBUNTU_MODE, true)
+                    }
+                    context.startActivity(intent)
+                }
             }
         }
     }

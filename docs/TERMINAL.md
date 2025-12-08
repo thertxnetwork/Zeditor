@@ -1,28 +1,32 @@
 # Terminal Feature Testing Guide
 
 ## Overview
-The terminal integration allows you to run code and shell scripts directly from Zeditor. The implementation uses **Termux's terminal-view and terminal-emulator libraries**, providing a professional terminal experience with features like:
-- Full ANSI escape code support and colors
-- zsh/bash syntax highlighting (when using those shells)
-- Better text rendering and scrolling
-- Support for complex terminal applications (nano, vim, etc.)
-- Advanced terminal features from the Termux project
+The terminal integration allows you to run code and shell scripts directly from Zeditor. The implementation includes two modes:
+
+1. **Standard Terminal**: Uses custom TerminalView with Android's Process API for quick shell commands and code execution
+2. **Ubuntu Terminal (Full)**: Complete Ubuntu 22.04 environment with PRoot support
+   - Full Ubuntu rootfs with apt package management
+   - No root access required
+   - Stores Ubuntu in `/nexterminal` directory
+   - Access to all Ubuntu packages (nano, vim, htop, gcc, python3, etc.)
+   - True Linux filesystem hierarchy
 
 ## How to Access the Terminal
 
 ### Method 1: Top Bar Button
 - Look for the terminal (bash) icon in the top application bar
-- Click it to open a new terminal session
+- Click it to open a standard terminal session
 
 ### Method 2: Add Menu
 - Click the "+" button in the top bar
-- Select "Terminal" from the menu
+- Select "Terminal" for standard terminal
+- Select "Ubuntu Terminal (Full)" for complete Ubuntu environment with PRoot
 - A new terminal session will open
 
 ### Method 3: File Runners
 When you have a supported file open:
 - Click the "Run" button
-- For supported file types, the code will execute in the terminal
+- For supported file types, the code will execute in the standard terminal
 
 ## Supported File Types
 
@@ -96,25 +100,69 @@ console.log("Process ID:", process.pid);
 
 ## Terminal Features
 
+### Two Terminal Modes
+
+#### 1. Standard Terminal
+- Quick access for running code and shell scripts
+- Uses custom TerminalView with Android's Process API
+- Basic ANSI control character support
+- Fast and lightweight
+- Auto-scrolling and line buffering
+
+#### 2. Ubuntu Terminal (Full)
+- Complete Ubuntu 22.04 LTS environment
+- **PRoot** integration for rootless Linux environment
+- Full Ubuntu package management with `apt`
+- Access to thousands of Ubuntu packages
+- True Linux filesystem hierarchy
+- Persistent storage in `/nexterminal/ubuntu`
+- **First launch**: Downloads ~100MB Ubuntu rootfs
+- **Subsequent launches**: Instant start from cached rootfs
+
 ### Input Methods
 - **Input Field**: Type commands in the bottom input field and press send button or Enter
 - **Keyboard**: Direct keyboard input is captured by the terminal view
 - **Touch**: Tap terminal to show keyboard
 
-### Display Features (via Termux Terminal)
-- Full ANSI escape code support with 256 colors
-- Proper text rendering with ligatures and Unicode support
-- Smooth scrolling and text selection
-- Customizable terminal themes
-- Support for complex terminal applications (nano, vim, htop, etc.)
-- Proper handling of control characters
+### Display Features
+- Terminal text rendering with monospace font
+- Auto-scrolling to bottom as new output appears
+- Basic ANSI control character support (\n, \r, \b)
+- Line buffering (5000 lines max)
 
 ### Process Handling
-- Terminal runs in a separate process using Termux's TerminalSession
-- Output is streamed in real-time with proper buffering
+- Terminal runs in a separate process
+- Output is streamed in real-time
 - Input is sent directly to the process
 - Session ends when process completes
-- Support for interactive programs
+
+## Ubuntu Terminal Capabilities
+
+When using **Ubuntu Terminal (Full)**, you get:
+
+- **Full Package Management**: Install any Ubuntu package with `apt`
+  ```bash
+  apt update
+  apt install nano vim htop gcc python3 nodejs npm git
+  ```
+
+- **Development Tools**: Complete development environment
+  - Compilers: gcc, g++, rustc, go
+  - Interpreters: python3, node, ruby, perl
+  - Build tools: make, cmake, ninja
+  - Version control: git, mercurial
+  - Text editors: nano, vim, emacs
+
+- **System Tools**: Standard Linux utilities
+  - File management: ls, cp, mv, rm, find
+  - Text processing: grep, sed, awk, cat
+  - Network tools: wget, curl, ping
+  - Process management: ps, top, htop, kill
+
+- **Persistence**: All changes are saved
+  - Installed packages persist across sessions
+  - Home directory at `/root` is preserved
+  - Configuration files are maintained
 
 ## Known Limitations
 
