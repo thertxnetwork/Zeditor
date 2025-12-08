@@ -23,7 +23,11 @@ Or for debug builds:
 - Syntax highlighting for multiple programming languages
 - Extensive customization options
 - Streamlined interface for efficient editing
-- Terminal support
+- **Terminal support** - Integrated terminal for running code and shell scripts
+  - Run Python, JavaScript, Java, Kotlin, C/C++, Rust, and many more languages
+  - Execute shell scripts directly from the editor
+  - Custom terminal view with process I/O handling
+  - Access terminal via top bar button or "Add" menu
 - LSP (Language Server Protocol) support
 
 ## Credits
