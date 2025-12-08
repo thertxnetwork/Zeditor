@@ -4,13 +4,14 @@ shopt -s checkwinsize
 
 source "$PRIVATE_DIR/local/bin/utils"
 
-# Ensure we use Ubuntu's binaries, not Android's
+# Early PATH setup: Prioritize Ubuntu's binaries over Android's system binaries
+# This prevents "Operation not permitted" errors when trying to use Android's /system/bin commands
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PRIVATE_DIR/local/bin
 
 # Set timezone
 CONTAINER_TIMEZONE="UTC"  # or any timezone like "Asia/Kolkata"
 
-# Symlink /etc/localtime to the desired timezone
+# Symlink /etc/localtime to the desired timezone (use absolute path to avoid Android system binary)
 /bin/ln -snf "/usr/share/zoneinfo/$CONTAINER_TIMEZONE" /etc/localtime 2>/dev/null || true
 
 # Write the timezone string to /etc/timezone
@@ -58,17 +59,20 @@ if [[ -f ~/.bashrc ]]; then
 fi
 
 
-# Set final PATH with Ubuntu binaries prioritized over Android system
+# Final PATH configuration: Set the complete PATH for the session
+# This is the PATH that will be used for all commands in the container
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/games:/usr/local/bin:/usr/local/sbin:$PRIVATE_DIR/local/bin
 export SHELL="bash"
 export PS1="\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\] \\$ "
 
 # Configure DNS for the container
+# Android doesn't use traditional /etc/resolv.conf, DNS servers are in system properties
 setup_dns() {
     # Try to get DNS servers from Android system properties
     local dns_servers=()
     
-    # Try to get DNS servers from Android's getprop (available on Android host)
+    # getprop is an Android command that may be accessible if /system is bind-mounted
+    # It reads system properties where Android stores DNS configuration
     if command -v getprop >/dev/null 2>&1; then
         # Try different property names that might contain DNS info
         for prop in net.dns1 net.dns2 net.dns3 net.dns4; do
@@ -79,7 +83,7 @@ setup_dns() {
         done
     fi
     
-    # If no DNS servers found, use Google's public DNS as fallback
+    # If no DNS servers found from Android properties, use reliable public DNS as fallback
     if [ ${#dns_servers[@]} -eq 0 ]; then
         dns_servers=("8.8.8.8" "8.8.4.4" "1.1.1.1" "1.0.0.1")
     fi
