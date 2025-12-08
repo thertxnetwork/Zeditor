@@ -17,7 +17,7 @@ val gitCommitDate: Provider<String> =
     providers.exec { commandLine("git", "show", "-s", "--format=%cI", "HEAD") }.standardOutput.asText.map { it.trim() }
 
 android {
-    namespace = "com.thertxnetwork.zeditor"
+    namespace = "com.thertxnetwork.zeditor.core.main"
     compileSdk = 36
 
     buildFeatures { buildConfig = true }
