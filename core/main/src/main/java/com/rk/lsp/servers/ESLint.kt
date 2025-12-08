@@ -2,8 +2,6 @@ package com.rk.lsp.servers
 
 import android.content.Context
 import com.rk.exec.TerminalCommand
-import com.rk.exec.isTerminalInstalled
-import com.rk.exec.launchInternalTerminal
 import com.rk.file.FileObject
 import com.rk.file.FileType
 import com.rk.file.child
@@ -25,26 +23,14 @@ class ESLint() : BaseLspServer() {
             FileType.TSX.extensions
 
     override fun isInstalled(context: Context): Boolean {
-        if (!isTerminalInstalled()) {
-            return false
-        }
-
-        return sandboxDir().child("/usr/bin/vscode-eslint-language-server").exists()
+        // TODO: Implement installation check without terminal dependency
+        return false
     }
 
     override fun install(context: Context) {
-        val installSH = localBinDir().child("lsp/eslint")
-
-        launchInternalTerminal(
-            context = context,
-            terminalCommand =
-                TerminalCommand(
-                    exe = "/bin/bash",
-                    args = arrayOf(installSH.absolutePath),
-                    id = "css-eslint-installer",
-                    env = arrayOf("DEBIAN_FRONTEND=noninteractive"),
-                ),
-        )
+        // TODO: Implement LSP installation without terminal dependency
+        // The terminal-based installation has been removed
+        // User needs to implement a different way to install and run LSP servers
     }
 
     override suspend fun beforeConnect() {}

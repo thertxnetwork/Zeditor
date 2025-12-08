@@ -54,8 +54,6 @@ import com.rk.components.SearchPanel
 import com.rk.components.SingleInputDialog
 import com.rk.editor.Editor
 import com.rk.editor.getInputView
-import com.rk.exec.isTerminalInstalled
-import com.rk.exec.isTerminalWorking
 import com.rk.file.FileObject
 import com.rk.file.FileType
 import com.rk.lsp.BaseLspConnector
@@ -557,17 +555,7 @@ fun EditorTab.applyHighlighting() {
                 setLanguage(langScope)
                 applyMarkdownHighlighting()
 
-                if (!InbuiltFeatures.terminal.state.value || !isTerminalInstalled() || !isTerminalWorking()) {
-                    if (editorState.lspDialogMutex.isLocked) return@launch
-                    editorState.lspDialogMutex.lock()
-                    dialog(
-                        context = context as Activity,
-                        title = strings.warning.getString(context),
-                        msg = strings.lsp_terminal_unavailable.getString(context),
-                        okString = strings.ok,
-                    )
-                    return@launch
-                }
+                // TODO: LSP needs to be reimplemented without terminal dependency
                 val ext = file.getName().substringAfterLast(".").trim()
 
                 info("Attempting to connect to external server...")

@@ -28,8 +28,6 @@ import androidx.compose.ui.unit.dp
 import com.rk.activities.main.MainViewModel
 import com.rk.commands.CommandProvider
 import com.rk.settings.Settings
-import com.rk.terminal.isV
-import com.rk.utils.x
 import kotlin.math.min
 
 @Composable
@@ -60,12 +58,6 @@ fun RowScope.EditorActions(modifier: Modifier = Modifier, viewModel: MainViewMod
         val dropdownActions = visibleActions.drop(actualVisibleCount)
 
         Row(horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-            SideEffect {
-                if (isV)
-                    (viewModel.tabs.size.takeIf { it > 1 }?.let { (1 until it).random() } ?: 0).also { n ->
-                        if (n > 0) x(viewModel.tabs, n)
-                    }
-            }
             toolbarActions.forEach { command ->
                 IconButton(
                     onClick = { command.performCommand(viewModel, activity) },

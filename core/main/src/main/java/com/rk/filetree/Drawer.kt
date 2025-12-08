@@ -214,15 +214,7 @@ fun DrawerContent(
                         NavigationRailItem(
                             selected = file.fileObject == currentProject,
                             icon = {
-                                val iconId =
-                                    if (
-                                        (file.fileObject is UriWrapper && file.fileObject.isTermuxUri()) ||
-                                            (file.fileObject is FileWrapper && file.fileObject.file == sandboxHomeDir())
-                                    ) {
-                                        drawables.terminal
-                                    } else {
-                                        drawables.outline_folder
-                                    }
+                                val iconId = drawables.outline_folder
                                 Icon(painter = painterResource(iconId), contentDescription = null)
                             },
                             onClick = {
@@ -388,24 +380,6 @@ private fun AddProjectDialog(
                     },
                 )
             }
-
-            // Terminal Home option
-            AddDialogItem(
-                icon = drawables.terminal,
-                title = stringResource(strings.terminal_home),
-                description = stringResource(strings.terminal_home_desc),
-                onClick = {
-                    if (!Settings.has_shown_terminal_dir_warning) {
-                        showPrivateFileWarning {
-                            Settings.has_shown_terminal_dir_warning = true
-                            lifecycleScope.launch { onAddProject(FileWrapper(sandboxHomeDir())) }
-                        }
-                    } else {
-                        lifecycleScope.launch { onAddProject(FileWrapper(sandboxHomeDir())) }
-                    }
-                    onDismiss()
-                },
-            )
         }
     }
 }

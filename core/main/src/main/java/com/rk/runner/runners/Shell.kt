@@ -3,7 +3,6 @@ package com.rk.runner.runners
 import android.content.Context
 import android.graphics.drawable.Drawable
 import com.rk.exec.TerminalCommand
-import com.rk.exec.launchInternalTerminal
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.resources.drawables
@@ -19,18 +18,10 @@ class Shell : RunnerImpl() {
             return
         }
 
-        launchInternalTerminal(
-            context,
-            terminalCommand =
-                TerminalCommand(
-                    sandbox = true,
-                    exe = "/bin/bash",
-                    args = arrayOf(fileObject.getAbsolutePath()),
-                    id = "shell-runner",
-                    terminatePreviousSession = true,
-                    workingDir = fileObject.getParentFile()?.getAbsolutePath() ?: "/",
-                ),
-        )
+        // TODO: Implement shell runner without terminal dependency
+        // The terminal-based runner has been removed
+        // User needs to implement a different way to run shell scripts
+        errorDialog(msgRes = strings.unsupported_feature)
     }
 
     override fun getName(): String {

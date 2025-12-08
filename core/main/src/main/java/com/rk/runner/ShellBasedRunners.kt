@@ -7,7 +7,6 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.rk.DefaultScope
 import com.rk.exec.TerminalCommand
-import com.rk.exec.launchInternalTerminal
 import com.rk.file.FileObject
 import com.rk.file.child
 import com.rk.file.createFileIfNot
@@ -15,6 +14,8 @@ import com.rk.file.localDir
 import com.rk.file.runnerDir
 import com.rk.resources.drawables
 import com.rk.resources.getDrawable
+import com.rk.resources.strings
+import com.rk.utils.errorDialog
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -69,15 +70,10 @@ object ShellBasedRunners {
 
 data class ShellBasedRunner(private val name: String, val regex: String) : RunnerImpl() {
     override suspend fun run(context: Context, fileObject: FileObject) {
-        val script = runnerDir().child("${name}.sh").createFileIfNot()
-        launchInternalTerminal(
-            context,
-            TerminalCommand(
-                exe = "/bin/bash",
-                args = arrayOf(script.absolutePath, fileObject.getAbsolutePath()),
-                id = name,
-            ),
-        )
+        // TODO: Implement shell-based runner without terminal dependency
+        // The terminal-based runner has been removed
+        // User needs to implement a different way to run custom scripts
+        errorDialog(msgRes = strings.unsupported_feature)
     }
 
     override fun getName(): String {

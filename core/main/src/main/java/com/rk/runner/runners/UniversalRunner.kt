@@ -6,7 +6,6 @@ import android.graphics.drawable.Drawable
 import android.os.Environment
 import com.rk.DefaultScope
 import com.rk.exec.TerminalCommand
-import com.rk.exec.launchInternalTerminal
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.file.child
@@ -16,15 +15,13 @@ import com.rk.resources.getDrawable
 import com.rk.resources.getString
 import com.rk.resources.strings
 import com.rk.runner.RunnerImpl
-import com.rk.terminal.setupAssetFile
 import com.rk.utils.dialog
+import com.rk.utils.errorDialog
 import kotlinx.coroutines.launch
 
 class UniversalRunner : RunnerImpl() {
     @SuppressLint("SdCardPath")
     override suspend fun run(context: Context, fileObject: FileObject) {
-        setupAssetFile("universal_runner")
-
         if (fileObject !is FileWrapper) {
             dialog(title = strings.attention.getString(), msg = strings.non_native_filetype.getString(), onOk = {})
             return
@@ -50,18 +47,10 @@ class UniversalRunner : RunnerImpl() {
     }
 
     suspend fun launchUniversalRunner(context: Context, fileObject: FileObject) {
-        launchInternalTerminal(
-            context,
-            terminalCommand =
-                TerminalCommand(
-                    sandbox = true,
-                    exe = "/bin/bash",
-                    args = arrayOf(localBinDir().child("universal_runner").absolutePath, fileObject.getAbsolutePath()),
-                    id = "universal_runner",
-                    terminatePreviousSession = true,
-                    workingDir = fileObject.getParentFile()?.getAbsolutePath() ?: "/",
-                ),
-        )
+        // TODO: Implement universal runner without terminal dependency
+        // The terminal-based runner has been removed
+        // User needs to implement a different way to run code files
+        errorDialog(msgRes = strings.unsupported_feature)
     }
 
     override fun getName(): String {
