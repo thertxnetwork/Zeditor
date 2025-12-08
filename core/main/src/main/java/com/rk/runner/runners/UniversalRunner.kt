@@ -47,10 +47,50 @@ class UniversalRunner : RunnerImpl() {
     }
 
     suspend fun launchUniversalRunner(context: Context, fileObject: FileObject) {
-        // TODO: Implement universal runner without terminal dependency
-        // The terminal-based runner has been removed
-        // User needs to implement a different way to run code files
-        errorDialog(msgRes = strings.unsupported_feature)
+        if (fileObject !is FileWrapper) {
+            errorDialog(msgRes = strings.native_runner)
+            return
+        }
+        
+        val filePath = fileObject.getAbsolutePath()
+        val fileName = fileObject.getName()
+        val workDir = fileObject.getParentFile()?.getAbsolutePath() ?: context.filesDir.absolutePath
+        
+        // Determine the interpreter based on file extension
+        val extension = fileName.substringAfterLast('.', "")
+        val className = fileName.substringBeforeLast('.')
+        val (command, args) = when (extension.lowercase()) {
+            "py" -> "/system/bin/sh" to arrayOf("-c", "python3 \"$filePath\" || python \"$filePath\"")
+            "js" -> "/system/bin/sh" to arrayOf("-c", "node \"$filePath\"")
+            "java" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && javac \"$fileName\" && java \"$className\"")
+            "kt" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && kotlinc \"$fileName\" -include-runtime -d \"${className}.jar\" && java -jar \"${className}.jar\"")
+            "rs" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && rustc \"$fileName\" && ./\"${fileName.substringBeforeLast('.')}\"")
+            "rb" -> "/system/bin/sh" to arrayOf("-c", "ruby \"$filePath\"")
+            "php" -> "/system/bin/sh" to arrayOf("-c", "php \"$filePath\"")
+            "c" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && gcc \"$fileName\" -o \"${fileName.substringBeforeLast('.')}\" && ./\"${fileName.substringBeforeLast('.')}\"")
+            "cpp", "cc", "cxx" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && g++ \"$fileName\" -o \"${fileName.substringBeforeLast('.')}\" && ./\"${fileName.substringBeforeLast('.')}\"")
+            "cs" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && mcs \"$fileName\" && mono \"${fileName.substringBeforeLast('.')}.exe\"")
+            "sh", "bash", "zsh", "fish" -> "/system/bin/sh" to arrayOf(filePath)
+            "pl" -> "/system/bin/sh" to arrayOf("-c", "perl \"$filePath\"")
+            "lua" -> "/system/bin/sh" to arrayOf("-c", "lua \"$filePath\"")
+            "r", "R" -> "/system/bin/sh" to arrayOf("-c", "Rscript \"$filePath\"")
+            "go" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && go run \"$fileName\"")
+            "ts" -> "/system/bin/sh" to arrayOf("-c", "ts-node \"$filePath\"")
+            else -> {
+                errorDialog("Unsupported file type: $extension")
+                return
+            }
+        }
+        
+        // Launch terminal with the appropriate command
+        val intent = android.content.Intent(context, com.rk.terminal.TerminalActivity::class.java).apply {
+            putExtra(com.rk.terminal.TerminalActivity.EXTRA_COMMAND, command)
+            putExtra(com.rk.terminal.TerminalActivity.EXTRA_ARGS, args)
+            putExtra(com.rk.terminal.TerminalActivity.EXTRA_WORKDIR, workDir)
+            putExtra(com.rk.terminal.TerminalActivity.EXTRA_TITLE, "Run: $fileName")
+        }
+        
+        context.startActivity(intent)
     }
 
     override fun getName(): String {
