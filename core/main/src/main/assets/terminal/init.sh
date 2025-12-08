@@ -6,6 +6,7 @@ source "$PRIVATE_DIR/local/bin/utils"
 
 # Early PATH setup: Prioritize Ubuntu's binaries over Android's system binaries
 # This prevents "Operation not permitted" errors when trying to use Android's /system/bin commands
+# Put Ubuntu binaries FIRST so they're used instead of Android's
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PRIVATE_DIR/local/bin
 
 # Ensure critical directories exist and have proper permissions
@@ -26,14 +27,16 @@ ensure_directory "/var/run" 755
 ensure_directory "/home" 755
 ensure_directory "/root" 700
 
-# Set timezone
+# Set timezone - Use Ubuntu's ln command which is now in PATH
 CONTAINER_TIMEZONE="UTC"  # or any timezone like "Asia/Kolkata"
 
-# Symlink /etc/localtime to the desired timezone (use absolute path to avoid Android system binary)
-/bin/ln -snf "/usr/share/zoneinfo/$CONTAINER_TIMEZONE" /etc/localtime 2>/dev/null || true
+# Symlink /etc/localtime to the desired timezone (using Ubuntu's ln, not Android's)
+if [ -f "/usr/share/zoneinfo/$CONTAINER_TIMEZONE" ]; then
+    ln -snf "/usr/share/zoneinfo/$CONTAINER_TIMEZONE" /etc/localtime 2>/dev/null || true
+fi
 
 # Write the timezone string to /etc/timezone
-echo "$CONTAINER_TIMEZONE" > /etc/timezone
+echo "$CONTAINER_TIMEZONE" > /etc/timezone 2>/dev/null || true
 
 # Reconfigure tzdata to apply without prompts
 DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive tzdata >/dev/null 2>&1
@@ -77,11 +80,13 @@ if [[ -f ~/.bashrc ]]; then
 fi
 
 
-# Final PATH configuration: Set the complete PATH for the session
+# Final PATH configuration: Prioritize Ubuntu binaries over Android system binaries
 # This is the PATH that will be used for all commands in the container
-export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/games:/usr/local/bin:/usr/local/sbin:$PRIVATE_DIR/local/bin
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PRIVATE_DIR/local/bin
 export SHELL="bash"
-export PS1="\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\] \\$ "
+# Use a simpler PS1 that doesn't call external commands like groups
+# \u in bash can sometimes trigger calls to getent or similar commands
+export PS1="\[\e[1;32m\]root@zeditor\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\] \\$ "
 
 # Configure DNS for the container
 # Android doesn't use traditional /etc/resolv.conf, DNS servers are in system properties
@@ -106,6 +111,10 @@ setup_dns() {
         dns_servers=("8.8.8.8" "8.8.4.4" "1.1.1.1" "1.0.0.1")
     fi
     
+    # Ensure /etc directory exists and is writable
+    mkdir -p /etc 2>/dev/null || true
+    chmod 755 /etc 2>/dev/null || true
+    
     # Write DNS configuration to /etc/resolv.conf
     {
         echo "# DNS configuration for Ubuntu container"
@@ -115,10 +124,14 @@ setup_dns() {
         done
         echo ""
         echo "options ndots:0"
-    } > /etc/resolv.conf
+    } > /etc/resolv.conf 2>/dev/null || {
+        # Fallback: try with sudo if available, or just create a minimal config
+        echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null || true
+        echo "nameserver 8.8.4.4" >> /etc/resolv.conf 2>/dev/null || true
+    }
     
     # Make sure resolv.conf is readable
-    chmod 644 /etc/resolv.conf
+    chmod 644 /etc/resolv.conf 2>/dev/null || true
 }
 
 # Setup DNS before attempting package operations
@@ -162,6 +175,9 @@ ensure_packages_once() {
     # Exit early if already done
     [[ -f "$marker_file" ]] && return 0
 
+    # Ensure apt config directory exists
+    mkdir -p /etc/apt/apt.conf.d 2>/dev/null || true
+    
     echo 'APT::Install-Recommends "false";' > /etc/apt/apt.conf.d/99norecommends
     echo 'APT::Install-Suggests "false";' >> /etc/apt/apt.conf.d/99norecommends
 
@@ -183,6 +199,13 @@ ensure_packages_once() {
     fi
 
     info "Installing missing packages: ${MISSING[*]}"
+    
+    # Test network connectivity first
+    if ! ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+        warn "No network connectivity detected. Package installation will be skipped."
+        warn "Packages will be installed on next session when network is available."
+        return 0
+    fi
 
     if export DEBIAN_FRONTEND=noninteractive && \
        apt update -y && \
@@ -190,8 +213,10 @@ ensure_packages_once() {
         touch "$marker_file"
         info "Packages installed."
     else
-        error "Failed to install packages."
-        return 1
+        warn "Failed to install packages. This may be due to network issues."
+        warn "Terminal will work but some features may be limited."
+        warn "Packages will be installed on next session when network is available."
+        return 0
     fi
 
     # Update command-not-found database
