@@ -1,61 +1,68 @@
-# PRoot Binaries Required
+# PRoot Binaries Included
 
-For the Ubuntu Terminal (Full) feature to work, you need to add PRoot binaries to this directory.
+✅ **PRoot binaries are now included in this assets folder!**
 
-## Required Files
+The following PRoot binaries (v5.3.0) have been added for the Ubuntu Terminal (Full) feature:
 
-Add the following PRoot binaries to this `assets` folder:
+- ✅ `proot-arm64` - For ARM64 devices (most modern Android devices)
+- ✅ `proot-armhf` - For ARM32 devices  
+- ✅ `proot-amd64` - For x86_64 devices (emulators and some tablets)
+- ✅ `proot-i386` - For x86 devices (fallback to x86_64 binary)
 
-- `proot-arm64` - For ARM64 devices (most modern Android devices)
-- `proot-armhf` - For ARM32 devices
-- `proot-amd64` - For x86_64 devices (emulators and some tablets)
-- `proot-i386` - For x86 devices
+## No Additional Setup Required
 
-## Where to Get PRoot Binaries
+The PRoot binaries are ready to use. The Ubuntu Terminal (Full) feature will work out of the box:
 
-### Option 1: Download from PRoot GitHub Releases
+1. Open the "Add" menu (+ button)
+2. Select "Ubuntu Terminal (Full)"
+3. On first launch, the app will download Ubuntu rootfs (~100MB)
+4. Subsequent launches will be instant
 
-Visit [PRoot GitHub Releases](https://github.com/proot-me/proot/releases) and download the appropriate binaries for Android.
+The app automatically detects your device architecture and uses the appropriate PRoot binary.
 
-### Option 2: Extract from Termux
+## Binary Information
 
-1. Download the Termux APK from [F-Droid](https://f-droid.org/packages/com.termux/)
-2. Extract the APK (it's a ZIP file)
-3. Find PRoot binaries in the `lib/` folders:
-   - `lib/arm64-v8a/` - Contains ARM64 binaries
-   - `lib/armeabi-v7a/` - Contains ARM32 binaries
-   - `lib/x86_64/` - Contains x86_64 binaries
-   - `lib/x86/` - Contains x86 binaries
-4. Copy the PRoot binary and rename it according to the architecture:
-   - From `lib/arm64-v8a/libproot.so` → `proot-arm64`
-   - From `lib/armeabi-v7a/libproot.so` → `proot-armhf`
-   - From `lib/x86_64/libproot.so` → `proot-amd64`
-   - From `lib/x86/libproot.so` → `proot-i386`
+- **Version**: PRoot v5.3.0
+- **Type**: Statically linked executables
+- **Source**: [PRoot GitHub Releases](https://github.com/proot-me/proot/releases/tag/v5.3.0)
+- **Architectures**: ARM64, ARM32, x86_64, x86
+- **Permissions**: Set to executable automatically by the app
 
-## Important Notes
+## What is PRoot?
 
-- PRoot binaries must be executable (permissions are set automatically by the app)
-- The app will detect the device architecture and use the appropriate binary
-- Without PRoot binaries, the "Ubuntu Terminal (Full)" feature will not work
-- The standard terminal will still function without PRoot binaries
+PRoot is a user-space implementation of chroot that doesn't require root access. It allows running a full Linux distribution in a sandboxed environment on Android by:
+
+- Faking root privileges (uid 0) within the container
+- Binding essential Android directories (/dev, /proc, /sys)
+- Translating filesystem paths transparently
+- Providing a complete Linux environment without kernel modifications
 
 ## File Structure
 
 ```
 assets/
-├── proot-arm64
-├── proot-armhf
-├── proot-amd64
-└── proot-i386
+├── proot-arm64    (1.5MB - ARM 64-bit)
+├── proot-armhf    (1.2MB - ARM 32-bit)
+├── proot-amd64    (1.9MB - x86 64-bit)
+├── proot-i386     (1.9MB - x86 32-bit fallback)
+└── README_PROOT.md (this file)
 ```
 
 ## Testing
 
-After adding the binaries:
-1. Build and run the app
-2. Open the "Add" menu (+ button)
-3. Select "Ubuntu Terminal (Full)"
-4. The app will download Ubuntu rootfs (~100MB) on first launch
-5. Subsequent launches will be instant
+After building the app:
+1. Open the "Add" menu (+ button in top bar)
+2. Select "Ubuntu Terminal (Full)"
+3. The app will download Ubuntu rootfs (~100MB) on first launch
+4. After installation, you'll have a full Ubuntu environment with apt, gcc, python3, node, vim, etc.
+5. All installations and configurations persist across app restarts
 
-If PRoot binaries are missing, the app will show an error message asking you to add them.
+## Troubleshooting
+
+If the Ubuntu Terminal fails to start:
+- Check device architecture compatibility
+- Ensure sufficient storage space (~200MB for full installation)
+- Check internet connection for first-time rootfs download
+- Review app logs for PRoot execution errors
+
+The standard terminal will continue to work regardless of PRoot binary status.

@@ -1,1 +1,2 @@
 *.sh text eol=lf
+core/main/src/main/assets/proot-* binary
