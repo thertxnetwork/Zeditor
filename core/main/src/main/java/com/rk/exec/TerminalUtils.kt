@@ -20,10 +20,13 @@ fun isTerminalInstalled(): Boolean {
     // Check external storage first
     if (hasExternalInstallation()) {
         val zeditorDir = getZeditorDir()
+        val sandboxDir = zeditorDir.child("sandbox")
+        val homeDir = zeditorDir.child("home")
+        val tmpDir = sandboxDir.child("tmp")
         val rootfs =
-            zeditorDir.child("sandbox").listFiles()?.filter {
-                it.absolutePath != zeditorDir.child("home").absolutePath &&
-                    it.absolutePath != zeditorDir.child("sandbox").child("tmp").absolutePath
+            sandboxDir.listFiles()?.filter {
+                it.absolutePath != homeDir.absolutePath &&
+                    it.absolutePath != tmpDir.absolutePath
             } ?: emptyList()
 
         return zeditorDir.child(".terminal_setup_ok_DO_NOT_REMOVE").exists() && rootfs.isNotEmpty()

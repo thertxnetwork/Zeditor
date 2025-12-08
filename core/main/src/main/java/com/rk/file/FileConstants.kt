@@ -88,8 +88,9 @@ fun getZeditorHomeDir(context: Context = application!!): File {
  */
 fun hasExternalInstallation(context: Context = application!!): Boolean {
     return try {
-        val zeditorSandbox = getZeditorDir(context).child("sandbox")
-        val setupMarker = getZeditorDir(context).child(".terminal_setup_ok_DO_NOT_REMOVE")
+        val zeditorDir = getZeditorDir(context)
+        val zeditorSandbox = zeditorDir.child("sandbox")
+        val setupMarker = zeditorDir.child(".terminal_setup_ok_DO_NOT_REMOVE")
         zeditorSandbox.exists() && zeditorSandbox.listFiles()?.isNotEmpty() == true && setupMarker.exists()
     } catch (e: Exception) {
         false
