@@ -319,8 +319,14 @@ class Terminal : AppCompatActivity() {
                     }
                     completedFiles++
 
-                    runCatching { outputFile.setExecutable(true) }.onFailure { it.printStackTrace() }
+                    runCatching { 
+                        outputFile.setExecutable(true, false)
+                        outputFile.setReadable(true, false)
+                    }.onFailure { it.printStackTrace() }
                 }
+
+                // Setup all permissions after downloads complete
+                com.rk.terminal.PermissionHelper.setupPermissions()
 
                 val stage = getNextStage(this@Terminal)
                 onComplete(stage)

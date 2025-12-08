@@ -61,7 +61,14 @@ ARGS="$ARGS --link2symlink"
 ARGS="$ARGS --sysvipc"
 ARGS="$ARGS -L"
 
-chmod -R +x $PRIVATE_DIR/local/bin
+# Add permission-related proot flags to reduce errors
+# These help proot handle permission issues more gracefully
+ARGS="$ARGS --kernel-release=5.10.0-android"
+
+chmod -R +x $PRIVATE_DIR/local/bin 2>/dev/null || true
+chmod 755 $PRIVATE_DIR/local/bin 2>/dev/null || true
+chmod 755 $LOCAL/sandbox 2>/dev/null || true
+chmod 1777 $LOCAL/sandbox/tmp 2>/dev/null || true
 
 if [ "$FDROID" = false ]; then
     if [ $# -gt 0 ]; then

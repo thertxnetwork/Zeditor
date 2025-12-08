@@ -107,6 +107,9 @@ object MkSession {
 
             pendingCommand?.env?.let { env.addAll(it) }
 
+            // Setup permissions before creating session
+            PermissionHelper.setupPermissions()
+            
             setupTerminalFiles()
 
             val sandboxSH = localBinDir().child("sandbox")

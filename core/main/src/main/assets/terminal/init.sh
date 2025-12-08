@@ -8,6 +8,24 @@ source "$PRIVATE_DIR/local/bin/utils"
 # This prevents "Operation not permitted" errors when trying to use Android's /system/bin commands
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PRIVATE_DIR/local/bin
 
+# Ensure critical directories exist and have proper permissions
+ensure_directory() {
+    local dir="$1"
+    local perms="${2:-755}"
+    if [ ! -d "$dir" ]; then
+        mkdir -p "$dir" 2>/dev/null || true
+    fi
+    chmod "$perms" "$dir" 2>/dev/null || true
+}
+
+# Create essential directories with proper permissions
+ensure_directory "/tmp" 1777
+ensure_directory "/var/tmp" 1777
+ensure_directory "/run" 755
+ensure_directory "/var/run" 755
+ensure_directory "/home" 755
+ensure_directory "/root" 700
+
 # Set timezone
 CONTAINER_TIMEZONE="UTC"  # or any timezone like "Asia/Kolkata"
 
@@ -105,6 +123,37 @@ setup_dns() {
 
 # Setup DNS before attempting package operations
 setup_dns
+
+# Fix permissions for writable locations
+fix_permissions() {
+    # Fix /tmp permissions
+    if [ -d "/tmp" ]; then
+        chmod 1777 /tmp 2>/dev/null || true
+    fi
+    
+    # Fix /var/tmp permissions
+    if [ -d "/var/tmp" ]; then
+        chmod 1777 /var/tmp 2>/dev/null || true
+    fi
+    
+    # Fix /var/lock permissions
+    if [ -d "/var/lock" ]; then
+        chmod 1777 /var/lock 2>/dev/null || true
+    fi
+    
+    # Fix /var/cache permissions
+    if [ -d "/var/cache" ]; then
+        chmod 755 /var/cache 2>/dev/null || true
+    fi
+    
+    # Fix /var/lib/dpkg if it exists
+    if [ -d "/var/lib/dpkg" ]; then
+        chmod 755 /var/lib/dpkg 2>/dev/null || true
+    fi
+}
+
+# Apply permission fixes
+fix_permissions
 
 ensure_packages_once() {
     local marker_file="/.cache/.packages_ensured"

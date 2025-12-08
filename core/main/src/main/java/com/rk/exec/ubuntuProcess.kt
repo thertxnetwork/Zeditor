@@ -79,11 +79,19 @@ suspend fun ubuntuProcess(
     withContext(Dispatchers.IO) {
         if (!root.exists()) throw NoSuchFileException(root)
 
+        // Setup permissions before launching process
+        com.rk.terminal.PermissionHelper.setupPermissions()
+
         val randomInt = Random.nextInt()
         val tmpDir = App.getTempDir().child("$randomInt-sandbox")
         if (!tmpDir.exists()) {
             tmpDir.mkdirs()
         }
+        
+        // Ensure temp directory has proper permissions
+        tmpDir.setReadable(true, false)
+        tmpDir.setWritable(true, false)
+        tmpDir.setExecutable(true, false)
 
         val linker = if (File("/system/bin/linker64").exists()) "/system/bin/linker64" else "/system/bin/linker"
 
@@ -105,6 +113,7 @@ suspend fun ubuntuProcess(
                 add("--link2symlink")
                 add("--sysvipc")
                 add("-L")
+                add("--kernel-release=5.10.0-android")  // Help with compatibility
 
                 add("-r")
                 add(root.absolutePath)
