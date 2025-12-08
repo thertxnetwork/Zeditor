@@ -5,21 +5,46 @@ import android.content.Intent
 import com.rk.activities.main.MainActivity
 import com.rk.activities.terminal.Terminal
 import com.rk.file.child
+import com.rk.file.getActiveSandboxDir
+import com.rk.file.getActiveHomeDir
+import com.rk.file.getZeditorDir
+import com.rk.file.hasExternalInstallation
 import com.rk.file.localDir
 import com.rk.file.sandboxDir
 import com.rk.file.sandboxHomeDir
 import com.rk.utils.showTerminalNotice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+
+private fun hasValidRootfs(sandboxDir: File, homeDir: File, tmpDir: File): Boolean {
+    val rootfs =
+        sandboxDir.listFiles()?.filter {
+            it.absolutePath != homeDir.absolutePath &&
+                it.absolutePath != tmpDir.absolutePath
+        } ?: emptyList()
+    return rootfs.isNotEmpty()
+}
 
 fun isTerminalInstalled(): Boolean {
-    val rootfs =
-        sandboxDir().listFiles()?.filter {
-            it.absolutePath != sandboxHomeDir().absolutePath &&
-                it.absolutePath != sandboxDir().child("tmp").absolutePath
-        } ?: emptyList()
-
-    return localDir().child(".terminal_setup_ok_DO_NOT_REMOVE").exists() && rootfs.isNotEmpty()
+    // Check external storage first
+    if (hasExternalInstallation()) {
+        val zeditorDir = getZeditorDir()
+        val sandboxDir = zeditorDir.child("sandbox")
+        val homeDir = zeditorDir.child("home")
+        val tmpDir = sandboxDir.child("tmp")
+        val setupMarker = zeditorDir.child(".terminal_setup_ok_DO_NOT_REMOVE")
+        
+        return setupMarker.exists() && hasValidRootfs(sandboxDir, homeDir, tmpDir)
+    }
+    
+    // Fall back to internal storage check
+    val sandboxDir = sandboxDir()
+    val homeDir = sandboxHomeDir()
+    val tmpDir = sandboxDir.child("tmp")
+    val setupMarker = localDir().child(".terminal_setup_ok_DO_NOT_REMOVE")
+    
+    return setupMarker.exists() && hasValidRootfs(sandboxDir, homeDir, tmpDir)
 }
 
 suspend fun isTerminalWorking(): Boolean =

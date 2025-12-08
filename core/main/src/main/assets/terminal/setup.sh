@@ -1,6 +1,6 @@
 set -e
 
-source "$LOCAL/bin/utils"
+source "$PRIVATE_DIR/local/bin/utils"
 
 info "Extracting the Ubuntu container…"
 
@@ -10,12 +10,12 @@ info "Extracting the Ubuntu container…"
 COMMAND="cd '$LOCAL/sandbox' && tar -xf '$TMP_DIR/sandbox.tar.gz'"
 
 if [ "$FDROID" = "false" ]; then
-    if ! $LINKER "$LOCAL/bin/proot" --link2symlink -w / /system/bin/sh -c "$COMMAND"; then
+    if ! $LINKER "$PRIVATE_DIR/local/bin/proot" --link2symlink -w / /system/bin/sh -c "$COMMAND"; then
         error "Failed to extract Ubuntu container"
         exit 1
     fi
 else
-    if ! "$LOCAL/bin/proot" --link2symlink -w / /system/bin/sh -c "$COMMAND"; then
+    if ! "$PRIVATE_DIR/local/bin/proot" --link2symlink -w / /system/bin/sh -c "$COMMAND"; then
         error "Failed to extract Ubuntu container"
         exit 1
     fi
@@ -91,5 +91,5 @@ if [ $# -gt 0 ]; then
     sh "$@"
 else
     clear
-    sh "$LOCAL/bin/sandbox"
+    sh "$PRIVATE_DIR/local/bin/sandbox"
 fi

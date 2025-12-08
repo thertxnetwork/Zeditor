@@ -25,8 +25,8 @@ ARGS="$ARGS -b /proc"
 ARGS="$ARGS -b $EXT_HOME:/home"
 ARGS="$ARGS -b $EXT_HOME:/root"
 ARGS="$ARGS -b $PRIVATE_DIR"
-ARGS="$ARGS -b $LOCAL/stat:/proc/stat"
-ARGS="$ARGS -b $LOCAL/vmstat:/proc/vmstat"
+ARGS="$ARGS -b $PRIVATE_DIR/local/stat:/proc/stat"
+ARGS="$ARGS -b $PRIVATE_DIR/local/vmstat:/proc/vmstat"
 
 if [ -e "/proc/self/fd" ]; then
   ARGS="$ARGS -b /proc/self/fd:/dev/fd"
@@ -61,19 +61,19 @@ ARGS="$ARGS --link2symlink"
 ARGS="$ARGS --sysvipc"
 ARGS="$ARGS -L"
 
-chmod -R +x $LOCAL/bin
+chmod -R +x $PRIVATE_DIR/local/bin
 
 if [ "$FDROID" = false ]; then
     if [ $# -gt 0 ]; then
-        $LINKER $LOCAL/bin/proot $ARGS /bin/bash --rcfile $LOCAL/bin/init -i -c "$*"
+        $LINKER $PRIVATE_DIR/local/bin/proot $ARGS /bin/bash --rcfile $PRIVATE_DIR/local/bin/init -i -c "$*"
     else
-        $LINKER $LOCAL/bin/proot $ARGS /bin/bash --rcfile $LOCAL/bin/init -i
+        $LINKER $PRIVATE_DIR/local/bin/proot $ARGS /bin/bash --rcfile $PRIVATE_DIR/local/bin/init -i
     fi
 else
     if [ $# -gt 0 ]; then
-        $LOCAL/bin/proot $ARGS /bin/bash --rcfile $LOCAL/bin/init -i -c "$*"
+        $PRIVATE_DIR/local/bin/proot $ARGS /bin/bash --rcfile $PRIVATE_DIR/local/bin/init -i -c "$*"
     else
-        $LOCAL/bin/proot $ARGS /bin/bash --rcfile $LOCAL/bin/init -i
+        $PRIVATE_DIR/local/bin/proot $ARGS /bin/bash --rcfile $PRIVATE_DIR/local/bin/init -i
     fi
 fi
 

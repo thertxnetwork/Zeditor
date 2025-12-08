@@ -1,6 +1,6 @@
 set -e
 
-source "$LOCAL/bin/utils"
+source "$PRIVATE_DIR/local/bin/utils"
 
 info 'Preparing installation...'
 apt update && apt upgrade -y
