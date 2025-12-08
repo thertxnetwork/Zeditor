@@ -6,6 +6,7 @@ import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.thertxnetwork.zeditor.core.main.R
 
@@ -35,6 +36,9 @@ class TerminalActivity : AppCompatActivity() {
         // Setup input handling
         setupInputHandling()
         
+        // Setup back press handling
+        setupBackPressHandling()
+        
         // Start terminal session
         startTerminalSession()
     }
@@ -52,6 +56,22 @@ class TerminalActivity : AppCompatActivity() {
                 false
             }
         }
+    }
+    
+    private fun setupBackPressHandling() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                AlertDialog.Builder(this@TerminalActivity)
+                    .setTitle("Exit Terminal")
+                    .setMessage("Are you sure you want to exit? The terminal session will be terminated.")
+                    .setPositiveButton("Exit") { _, _ ->
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+        })
     }
     
     private fun sendCommand() {
@@ -73,8 +93,13 @@ class TerminalActivity : AppCompatActivity() {
         // Set activity title
         setTitle(title)
         
-        // Build command array
-        val allArgs = arrayOf(command) + args
+        // Build command array - no shell interpolation, pass args directly
+        val commandArray = if (workdir != filesDir.absolutePath) {
+            // Use cd command with proper quoting, then exec to replace shell process
+            arrayOf(command, "-c", "cd ${workdir.replace("\"", "\\\"")} && exec \"$command\" ${args.joinToString(" ") { "\"${it.replace("\"", "\\\"")}\"" }}")
+        } else {
+            arrayOf(command) + args
+        }
         
         // Build environment map
         val environment = mutableMapOf<String, String>()
@@ -91,15 +116,8 @@ class TerminalActivity : AppCompatActivity() {
             }
         }
         
-        // Change working directory by prepending cd command
-        val cdCommand = if (workdir != filesDir.absolutePath) {
-            arrayOf(command, "-c", "cd \"$workdir\" && exec ${allArgs.joinToString(" ") { "\"$it\"" }}")
-        } else {
-            allArgs
-        }
-        
         // Start terminal session
-        terminalView.startSession(cdCommand, environment)
+        terminalView.startSession(commandArray, environment)
         
         // Request focus
         terminalView.requestFocus()
@@ -110,17 +128,6 @@ class TerminalActivity : AppCompatActivity() {
             return true
         }
         return super.onKeyDown(keyCode, event)
-    }
-    
-    override fun onBackPressed() {
-        AlertDialog.Builder(this)
-            .setTitle("Exit Terminal")
-            .setMessage("Are you sure you want to exit? The terminal session will be terminated.")
-            .setPositiveButton("Exit") { _, _ ->
-                super.onBackPressed()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
     }
     
     override fun onDestroy() {

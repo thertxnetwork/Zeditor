@@ -73,13 +73,14 @@ class TerminalView @JvmOverloads constructor(
                 putAll(environment)
             }
             
-            process = processBuilder.start()
+            val newProcess = processBuilder.start()
+            process = newProcess
             
-            inputWriter = BufferedWriter(OutputStreamWriter(process!!.outputStream))
+            inputWriter = BufferedWriter(OutputStreamWriter(newProcess.outputStream))
             
             // Start output reader thread
             outputReader = Thread {
-                val reader = BufferedReader(InputStreamReader(process!!.inputStream))
+                val reader = BufferedReader(InputStreamReader(newProcess.inputStream))
                 
                 try {
                     val buffer = CharArray(1024)
@@ -93,7 +94,8 @@ class TerminalView @JvmOverloads constructor(
                     }
                 } catch (e: IOException) {
                     post {
-                        if (process?.isAlive == true) {
+                        val currentProcess = process
+                        if (currentProcess?.isAlive == true) {
                             appendOutput("\n[Session terminated unexpectedly]\n")
                         } else {
                             appendOutput("\n[Session ended]\n")
@@ -105,10 +107,11 @@ class TerminalView @JvmOverloads constructor(
             // Start input writer thread
             Thread {
                 try {
-                    while (process?.isAlive == true) {
+                    val writer = inputWriter
+                    while (newProcess.isAlive && writer != null) {
                         val input = inputQueue.take()
-                        inputWriter?.write(input)
-                        inputWriter?.flush()
+                        writer.write(input)
+                        writer.flush()
                     }
                 } catch (e: InterruptedException) {
                     // Thread interrupted, exit gracefully
@@ -238,8 +241,29 @@ class TerminalView @JvmOverloads constructor(
         try {
             outputReader?.interrupt()
             inputWriter?.close()
+            
+            // Try graceful shutdown first
             process?.destroy()
-            process?.waitFor()
+            
+            // Wait with timeout, then force if needed
+            val currentProcess = process
+            if (currentProcess != null) {
+                // Wait up to 3 seconds for graceful shutdown
+                val thread = Thread {
+                    try {
+                        currentProcess.waitFor()
+                    } catch (e: InterruptedException) {
+                        // Timeout occurred, will be handled below
+                    }
+                }
+                thread.start()
+                thread.join(3000) // 3 second timeout
+                
+                // Force kill if still alive
+                if (currentProcess.isAlive) {
+                    currentProcess.destroyForcibly()
+                }
+            }
         } catch (e: Exception) {
             // Ignore cleanup errors
         }

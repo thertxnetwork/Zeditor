@@ -20,6 +20,15 @@ import com.rk.utils.errorDialog
 import kotlinx.coroutines.launch
 
 class UniversalRunner : RunnerImpl() {
+    
+    /**
+     * Escape a string for safe use in shell commands
+     * Replaces single quotes with '\'' to prevent command injection
+     */
+    private fun shellEscape(str: String): String {
+        return "'${str.replace("'", "'\\''")}'"
+    }
+    
     @SuppressLint("SdCardPath")
     override suspend fun run(context: Context, fileObject: FileObject) {
         if (fileObject !is FileWrapper) {
@@ -56,26 +65,31 @@ class UniversalRunner : RunnerImpl() {
         val fileName = fileObject.getName()
         val workDir = fileObject.getParentFile()?.getAbsolutePath() ?: context.filesDir.absolutePath
         
+        // Escape paths for safe shell usage
+        val escapedFilePath = shellEscape(filePath)
+        val escapedFileName = shellEscape(fileName)
+        val escapedWorkDir = shellEscape(workDir)
+        val escapedClassName = shellEscape(fileName.substringBeforeLast('.'))
+        
         // Determine the interpreter based on file extension
         val extension = fileName.substringAfterLast('.', "")
-        val className = fileName.substringBeforeLast('.')
         val (command, args) = when (extension.lowercase()) {
-            "py" -> "/system/bin/sh" to arrayOf("-c", "python3 \"$filePath\" || python \"$filePath\"")
-            "js" -> "/system/bin/sh" to arrayOf("-c", "node \"$filePath\"")
-            "java" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && javac \"$fileName\" && java \"$className\"")
-            "kt" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && kotlinc \"$fileName\" -include-runtime -d \"${className}.jar\" && java -jar \"${className}.jar\"")
-            "rs" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && rustc \"$fileName\" && ./\"${fileName.substringBeforeLast('.')}\"")
-            "rb" -> "/system/bin/sh" to arrayOf("-c", "ruby \"$filePath\"")
-            "php" -> "/system/bin/sh" to arrayOf("-c", "php \"$filePath\"")
-            "c" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && gcc \"$fileName\" -o \"${fileName.substringBeforeLast('.')}\" && ./\"${fileName.substringBeforeLast('.')}\"")
-            "cpp", "cc", "cxx" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && g++ \"$fileName\" -o \"${fileName.substringBeforeLast('.')}\" && ./\"${fileName.substringBeforeLast('.')}\"")
-            "cs" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && mcs \"$fileName\" && mono \"${fileName.substringBeforeLast('.')}.exe\"")
+            "py" -> "/system/bin/sh" to arrayOf("-c", "python3 $escapedFilePath || python $escapedFilePath")
+            "js" -> "/system/bin/sh" to arrayOf("-c", "node $escapedFilePath")
+            "java" -> "/system/bin/sh" to arrayOf("-c", "cd $escapedWorkDir && javac $escapedFileName && java $escapedClassName")
+            "kt" -> "/system/bin/sh" to arrayOf("-c", "cd $escapedWorkDir && kotlinc $escapedFileName -include-runtime -d $escapedClassName.jar && java -jar $escapedClassName.jar")
+            "rs" -> "/system/bin/sh" to arrayOf("-c", "cd $escapedWorkDir && rustc $escapedFileName && ./$escapedClassName")
+            "rb" -> "/system/bin/sh" to arrayOf("-c", "ruby $escapedFilePath")
+            "php" -> "/system/bin/sh" to arrayOf("-c", "php $escapedFilePath")
+            "c" -> "/system/bin/sh" to arrayOf("-c", "cd $escapedWorkDir && gcc $escapedFileName -o $escapedClassName && ./$escapedClassName")
+            "cpp", "cc", "cxx" -> "/system/bin/sh" to arrayOf("-c", "cd $escapedWorkDir && g++ $escapedFileName -o $escapedClassName && ./$escapedClassName")
+            "cs" -> "/system/bin/sh" to arrayOf("-c", "cd $escapedWorkDir && mcs $escapedFileName && mono $escapedClassName.exe")
             "sh", "bash", "zsh", "fish" -> "/system/bin/sh" to arrayOf(filePath)
-            "pl" -> "/system/bin/sh" to arrayOf("-c", "perl \"$filePath\"")
-            "lua" -> "/system/bin/sh" to arrayOf("-c", "lua \"$filePath\"")
-            "r", "R" -> "/system/bin/sh" to arrayOf("-c", "Rscript \"$filePath\"")
-            "go" -> "/system/bin/sh" to arrayOf("-c", "cd \"$workDir\" && go run \"$fileName\"")
-            "ts" -> "/system/bin/sh" to arrayOf("-c", "ts-node \"$filePath\"")
+            "pl" -> "/system/bin/sh" to arrayOf("-c", "perl $escapedFilePath")
+            "lua" -> "/system/bin/sh" to arrayOf("-c", "lua $escapedFilePath")
+            "r", "R" -> "/system/bin/sh" to arrayOf("-c", "Rscript $escapedFilePath")
+            "go" -> "/system/bin/sh" to arrayOf("-c", "cd $escapedWorkDir && go run $escapedFileName")
+            "ts" -> "/system/bin/sh" to arrayOf("-c", "ts-node $escapedFilePath")
             else -> {
                 errorDialog("Unsupported file type: $extension")
                 return
