@@ -9,6 +9,10 @@ import com.rk.activities.terminal.Terminal
 import com.rk.exec.pendingCommand
 import com.rk.file.FileWrapper
 import com.rk.file.child
+import com.rk.file.getActiveHomeDir
+import com.rk.file.getActiveSandboxDir
+import com.rk.file.getZeditorDir
+import com.rk.file.hasExternalInstallation
 import com.rk.file.localBinDir
 import com.rk.file.localDir
 import com.rk.file.localLibDir
@@ -56,6 +60,7 @@ object MkSession {
 
             tmpDir.mkdirs()
 
+            val activeHomeDir = getActiveHomeDir()
             val env =
                 mutableListOf(
                     "PROOT_TMP_DIR=${tmpDir.absolutePath}",
@@ -65,11 +70,11 @@ object MkSession {
                     "TERM=xterm-256color",
                     "LANG=C.UTF-8",
                     "DEBUG=${BuildConfig.DEBUG}",
-                    "LOCAL=${localDir().absolutePath}",
+                    "LOCAL=${if (hasExternalInstallation()) getZeditorDir().absolutePath else localDir().absolutePath}",
                     "PRIVATE_DIR=${filesDir.parentFile!!.absolutePath}",
                     "LD_LIBRARY_PATH=${localLibDir().absolutePath}",
-                    "EXT_HOME=${sandboxHomeDir()}",
-                    "HOME=${if (Settings.sandbox){ "/home"} else{ sandboxHomeDir()}}",
+                    "EXT_HOME=${activeHomeDir}",
+                    "HOME=${if (Settings.sandbox){ "/home"} else{ activeHomeDir}}",
                     "PROMPT_DIRTRIM=2",
                     "LINKER=${if(File("/system/bin/linker64").exists()){"/system/bin/linker64"}else{"/system/bin/linker"}}",
                     "NATIVE_LIB_DIR=${applicationInfo.nativeLibraryDir}",
@@ -189,6 +194,6 @@ suspend fun Terminal.getPwd(): String {
     return if (Settings.sandbox) {
         "/home"
     } else {
-        sandboxHomeDir().absolutePath
+        getActiveHomeDir().absolutePath
     }
 }

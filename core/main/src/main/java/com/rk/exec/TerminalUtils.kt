@@ -5,6 +5,10 @@ import android.content.Intent
 import com.rk.activities.main.MainActivity
 import com.rk.activities.terminal.Terminal
 import com.rk.file.child
+import com.rk.file.getActiveSandboxDir
+import com.rk.file.getActiveHomeDir
+import com.rk.file.getZeditorDir
+import com.rk.file.hasExternalInstallation
 import com.rk.file.localDir
 import com.rk.file.sandboxDir
 import com.rk.file.sandboxHomeDir
@@ -13,6 +17,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 fun isTerminalInstalled(): Boolean {
+    // Check external storage first
+    if (hasExternalInstallation()) {
+        val zeditorDir = getZeditorDir()
+        val rootfs =
+            zeditorDir.child("sandbox").listFiles()?.filter {
+                it.absolutePath != zeditorDir.child("home").absolutePath &&
+                    it.absolutePath != zeditorDir.child("sandbox").child("tmp").absolutePath
+            } ?: emptyList()
+
+        return zeditorDir.child(".terminal_setup_ok_DO_NOT_REMOVE").exists() && rootfs.isNotEmpty()
+    }
+    
+    // Fall back to internal storage check
     val rootfs =
         sandboxDir().listFiles()?.filter {
             it.absolutePath != sandboxHomeDir().absolutePath &&

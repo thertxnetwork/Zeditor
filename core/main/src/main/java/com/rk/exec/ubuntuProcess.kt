@@ -45,7 +45,7 @@ fun getDefaultBindings(): List<Binding> {
     val list = mutableListOf<Binding>()
 
     with(list) {
-        bind(sandboxHomeDir().absolutePath, "/home")
+        bind(com.rk.file.getActiveHomeDir().absolutePath, "/home")
         bind("/sdcard")
         bind("/storage")
         bind("/data")
@@ -72,7 +72,7 @@ fun getDefaultBindings(): List<Binding> {
 
 suspend fun ubuntuProcess(
     excludeMounts: List<String> = listOf<String>(),
-    root: File = sandboxDir(),
+    root: File = com.rk.file.getActiveSandboxDir(),
     workingDir: String? = null,
     command: MutableList<String>,
 ): Process =
@@ -142,7 +142,7 @@ suspend fun ubuntuProcess(
 @SuppressLint("SdCardPath")
 suspend fun ubuntuProcess(
     excludeMounts: List<String> = listOf<String>(),
-    root: File = sandboxDir(),
+    root: File = com.rk.file.getActiveSandboxDir(),
     workingDir: String? = null,
     vararg command: String,
 ): Process {

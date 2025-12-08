@@ -2,7 +2,7 @@
 force_color_prompt=yes
 shopt -s checkwinsize
 
-source "$LOCAL/bin/utils"
+source "$PRIVATE_DIR/local/bin/utils"
 
 # Set timezone
 CONTAINER_TIMEZONE="UTC"  # or any timezone like "Asia/Kolkata"
@@ -16,7 +16,7 @@ echo "$CONTAINER_TIMEZONE" > /etc/timezone
 # Reconfigure tzdata to apply without prompts
 DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive tzdata >/dev/null 2>&1
 
-ALPINE_DIR="$LOCAL/alpine"
+ALPINE_DIR="$PRIVATE_DIR/local/alpine"
 RETAINED_FILE="$ALPINE_DIR/.retained"
 
 if [ -d "$ALPINE_DIR" ]; then
@@ -55,7 +55,7 @@ if [[ -f ~/.bashrc ]]; then
 fi
 
 
-export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/games:/usr/local/bin:/usr/local/sbin:$LOCAL/bin:$PATH
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/games:/usr/local/bin:/usr/local/sbin:$PRIVATE_DIR/local/bin:$PATH
 export SHELL="bash"
 export PS1="\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\] \\$ "
 
