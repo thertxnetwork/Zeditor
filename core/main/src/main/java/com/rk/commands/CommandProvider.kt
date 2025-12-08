@@ -7,7 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import com.rk.DefaultScope
 import com.rk.activities.main.MainViewModel
 import com.rk.activities.settings.SettingsActivity
-import com.rk.activities.terminal.Terminal
 import com.rk.components.addDialog
 import com.rk.file.FileType
 import com.rk.filetree.projects
@@ -27,7 +26,6 @@ import com.rk.settings.app.InbuiltFeatures
 import com.rk.tabs.EditorTab
 import com.rk.utils.dialog
 import com.rk.utils.errorDialog
-import com.rk.utils.showTerminalNotice
 import java.util.Locale.getDefault
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -49,28 +47,6 @@ object CommandProvider {
 
     private fun getAppCommands(viewModel: MainViewModel): List<Command> {
         return listOf(
-            Command(
-                id = "global.terminal",
-                label = mutableStateOf(strings.terminal.getString()),
-                action = { _, act ->
-                    showTerminalNotice(act!!) {
-                        val intent =
-                            Intent(act, Terminal::class.java).apply {
-                                val currentFile = viewModel.currentTab?.file ?: return@apply
-                                val currentPath = currentFile.getAbsolutePath()
-                                val project =
-                                    projects
-                                        .filter { currentPath.startsWith(it.fileObject.getAbsolutePath()) }
-                                        .maxByOrNull { it.fileObject.getAbsolutePath().length } ?: return@apply
-                                putExtra("cwd", project.fileObject.getAbsolutePath())
-                            }
-                        act.startActivity(intent)
-                    }
-                },
-                isSupported = derivedStateOf { InbuiltFeatures.terminal.state.value },
-                isEnabled = mutableStateOf(true),
-                icon = mutableIntStateOf(drawables.terminal),
-            ),
             Command(
                 id = "global.settings",
                 label = mutableStateOf(strings.settings.getString()),

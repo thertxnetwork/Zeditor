@@ -72,22 +72,6 @@ private fun Categories(navController: NavController) {
         onNavigate = { navController.navigate(SettingsRoutes.EditorSettings.route) },
     )
 
-    if (InbuiltFeatures.terminal.state.value) {
-        PreferenceCategory(
-            label = stringResource(id = strings.terminal),
-            description = stringResource(id = strings.terminal_desc),
-            iconResource = drawables.terminal,
-            onNavigate = { navController.navigate(SettingsRoutes.TerminalSettings.route) },
-        )
-
-        PreferenceCategory(
-            label = stringResource(id = strings.runners),
-            description = stringResource(id = strings.runners_desc),
-            iconResource = drawables.run,
-            onNavigate = { navController.navigate(SettingsRoutes.Runners.route) },
-        )
-    }
-
     if (InbuiltFeatures.debugMode.state.value) {
         PreferenceCategory(
             label = stringResource(strings.debug_options),

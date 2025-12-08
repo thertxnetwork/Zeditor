@@ -40,7 +40,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.rk.DefaultScope
 import com.rk.activities.main.MainActivity
-import com.rk.activities.terminal.Terminal
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.file.openWith
@@ -124,22 +123,6 @@ fun FileActionDialog(
                             fileTreeViewModel.updateCache(file)
                             showXedDialog = true
                             onDismissRequest()
-                        },
-                    )
-                }
-
-                if (InbuiltFeatures.terminal.state.value && file is FileWrapper && file.isDirectory()) {
-                    AddDialogItem(
-                        icon = drawables.terminal,
-                        title = stringResource(strings.open_in_terminal),
-                        // description = stringResource(strings.open_in_terminal),
-                        onClick = {
-                            showTerminalNotice(activity = MainActivity.instance!!) {
-                                val intent = Intent(context, Terminal::class.java)
-                                intent.putExtra("cwd", file.getAbsolutePath())
-                                context.startActivity(intent)
-                                onDismissRequest()
-                            }
                         },
                     )
                 }

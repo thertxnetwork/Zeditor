@@ -139,8 +139,6 @@ dependencies {
     implementation(project(":core:resources"))
     implementation(project(":core:components"))
     // implementation(project(":core:extension"))
-    implementation(project(":core:terminal-view"))
-    implementation(project(":core:terminal-emulator"))
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidsvg.aar)
 }
