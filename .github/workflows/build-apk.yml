@@ -64,21 +64,39 @@ jobs:
           retention-days: 30
 
       - name: Build Release APK (unsigned)
+        id: build_release
         run: ./gradlew assembleRelease --stacktrace
         continue-on-error: true
 
       - name: Rename Release APK
-        if: success()
+        if: steps.build_release.outcome == 'success'
         run: |
-          find app/build/outputs/apk/release -name "*.apk" -exec cp {} app/outputs/zeditor-release-${{ env.COMMIT_HASH }}.apk \;
+          if [ -d "app/build/outputs/apk/release" ] && [ -n "$(find app/build/outputs/apk/release -name '*.apk' 2>/dev/null)" ]; then
+            mkdir -p app/outputs
+            find app/build/outputs/apk/release -name "*.apk" -exec cp {} app/outputs/zeditor-release-${{ env.COMMIT_HASH }}.apk \;
+          else
+            echo "No release APK found, skipping rename step"
+          fi
 
       - name: Upload Release APK
-        if: success()
+        if: steps.build_release.outcome == 'success'
+        run: |
+          if [ -f "app/outputs/zeditor-release-${{ env.COMMIT_HASH }}.apk" ]; then
+            echo "Release APK exists, uploading..."
+          else
+            echo "Release APK not found, skipping upload"
+            exit 0
+          fi
+        continue-on-error: true
+
+      - name: Upload Release APK Artifact
+        if: steps.build_release.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: Zeditor-Release-APK
           path: app/outputs/zeditor-release-${{ env.COMMIT_HASH }}.apk
           retention-days: 30
+        continue-on-error: true
 
       - name: Build summary
         run: |
