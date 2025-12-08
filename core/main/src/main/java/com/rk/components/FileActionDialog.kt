@@ -59,7 +59,6 @@ import com.rk.resources.strings
 import com.rk.settings.app.InbuiltFeatures
 import com.rk.tabs.EditorTab
 import com.rk.utils.errorDialog
-import com.rk.utils.showTerminalNotice
 import com.rk.utils.toast
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers

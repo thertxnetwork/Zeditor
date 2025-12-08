@@ -2,7 +2,6 @@ package com.rk.lsp
 
 import android.util.Log
 import com.rk.exec.readStderr
-import com.rk.exec.ubuntuProcess
 import com.rk.utils.toast
 import com.thertxnetwork.zeditor.core.main.BuildConfig
 import io.github.rosemoe.sora.lsp.client.connection.StreamConnectionProvider
@@ -24,15 +23,25 @@ class ProcessConnection(private val cmd: Array<String>) : StreamConnectionProvid
     override fun start() {
         if (process != null) return
         runBlocking {
-            process = ubuntuProcess(command = cmd)
-
-            if (BuildConfig.DEBUG && process?.waitFor(110, TimeUnit.MILLISECONDS) == true) {
-                val exitCode = process?.exitValue() ?: -1
-                if (exitCode != 0) {
-                    val stderr = process?.readStderr().orEmpty()
-                    Log.e(this@ProcessConnection::class.java.simpleName, stderr)
-                    toast(stderr)
+            // TODO: Implement process execution without terminal dependency
+            // The ubuntuProcess has been removed along with terminal infrastructure
+            // User needs to implement a different way to spawn LSP server processes
+            // For now, try to use regular ProcessBuilder
+            try {
+                val processBuilder = ProcessBuilder(*cmd)
+                process = processBuilder.start()
+                
+                if (BuildConfig.DEBUG && process?.waitFor(110, TimeUnit.MILLISECONDS) == true) {
+                    val exitCode = process?.exitValue() ?: -1
+                    if (exitCode != 0) {
+                        val stderr = process?.readStderr().orEmpty()
+                        Log.e(this@ProcessConnection::class.java.simpleName, stderr)
+                        toast(stderr)
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e(this@ProcessConnection::class.java.simpleName, "Failed to start LSP process", e)
+                toast("Failed to start LSP process: ${e.message}")
             }
         }
     }
