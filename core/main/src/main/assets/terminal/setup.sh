@@ -80,11 +80,11 @@ done
 
 rm "$TMP_DIR"/sandbox.tar.gz
 # DO NOT REMOVE THIS FILE JUST DON'T, TRUST ME
-touch $LOCAL/.terminal_setup_ok_DO_NOT_REMOVE
+touch "$LOCAL/.terminal_setup_ok_DO_NOT_REMOVE"
 
 if [ $# -gt 0 ]; then
-    sh $@
+    sh "$@"
 else
     clear
-    sh $LOCAL/bin/sandbox
+    sh "$LOCAL/bin/sandbox"
 fi
