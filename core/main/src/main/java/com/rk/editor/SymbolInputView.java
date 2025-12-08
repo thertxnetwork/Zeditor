@@ -35,7 +35,7 @@ import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 
-import com.thertxnetwork.zeditor.R;
+import com.thertxnetwork.zeditor.core.main.R;
 
 import java.util.List;
 

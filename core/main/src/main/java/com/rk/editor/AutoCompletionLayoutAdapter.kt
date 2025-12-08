@@ -7,7 +7,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import com.thertxnetwork.zeditor.R
+import com.thertxnetwork.zeditor.core.main.R
 import io.github.rosemoe.sora.widget.component.EditorCompletionAdapter
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import kotlin.math.roundToInt
