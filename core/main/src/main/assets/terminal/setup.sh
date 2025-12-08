@@ -6,7 +6,15 @@ info "Extracting the Ubuntu container…"
 
 # Extract the rootfs directly without proot
 # proot is not needed for extraction - we're just unpacking files
-cd "$LOCAL/sandbox" && tar -xf "$TMP_DIR/sandbox.tar.gz"
+if ! cd "$LOCAL/sandbox"; then
+    error "Failed to change directory to $LOCAL/sandbox"
+    exit 1
+fi
+
+if ! tar -xf "$TMP_DIR/sandbox.tar.gz"; then
+    error "Failed to extract Ubuntu container"
+    exit 1
+fi
 
 
 SANDBOX_DIR="$LOCAL/sandbox"
