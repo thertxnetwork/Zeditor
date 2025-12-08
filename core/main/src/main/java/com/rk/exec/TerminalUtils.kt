@@ -15,6 +15,16 @@ import com.rk.file.sandboxHomeDir
 import com.rk.utils.showTerminalNotice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+
+private fun hasValidRootfs(sandboxDir: File, homeDir: File, tmpDir: File): Boolean {
+    val rootfs =
+        sandboxDir.listFiles()?.filter {
+            it.absolutePath != homeDir.absolutePath &&
+                it.absolutePath != tmpDir.absolutePath
+        } ?: emptyList()
+    return rootfs.isNotEmpty()
+}
 
 fun isTerminalInstalled(): Boolean {
     // Check external storage first
@@ -23,23 +33,18 @@ fun isTerminalInstalled(): Boolean {
         val sandboxDir = zeditorDir.child("sandbox")
         val homeDir = zeditorDir.child("home")
         val tmpDir = sandboxDir.child("tmp")
-        val rootfs =
-            sandboxDir.listFiles()?.filter {
-                it.absolutePath != homeDir.absolutePath &&
-                    it.absolutePath != tmpDir.absolutePath
-            } ?: emptyList()
-
-        return zeditorDir.child(".terminal_setup_ok_DO_NOT_REMOVE").exists() && rootfs.isNotEmpty()
+        val setupMarker = zeditorDir.child(".terminal_setup_ok_DO_NOT_REMOVE")
+        
+        return setupMarker.exists() && hasValidRootfs(sandboxDir, homeDir, tmpDir)
     }
     
     // Fall back to internal storage check
-    val rootfs =
-        sandboxDir().listFiles()?.filter {
-            it.absolutePath != sandboxHomeDir().absolutePath &&
-                it.absolutePath != sandboxDir().child("tmp").absolutePath
-        } ?: emptyList()
-
-    return localDir().child(".terminal_setup_ok_DO_NOT_REMOVE").exists() && rootfs.isNotEmpty()
+    val sandboxDir = sandboxDir()
+    val homeDir = sandboxHomeDir()
+    val tmpDir = sandboxDir.child("tmp")
+    val setupMarker = localDir().child(".terminal_setup_ok_DO_NOT_REMOVE")
+    
+    return setupMarker.exists() && hasValidRootfs(sandboxDir, homeDir, tmpDir)
 }
 
 suspend fun isTerminalWorking(): Boolean =
