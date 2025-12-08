@@ -23,9 +23,6 @@ class Markdown() : BaseLspServer() {
         return false
     }
 
-        return sandboxDir().child("/usr/bin/vscode-markdown-language-server").exists()
-    }
-
     override suspend fun beforeConnect() {}
 
     override suspend fun connectionSuccess(lspConnector: BaseLspConnector) {}

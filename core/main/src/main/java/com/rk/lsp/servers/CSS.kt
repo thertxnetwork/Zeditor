@@ -24,9 +24,6 @@ class CSS() : BaseLspServer() {
         return false
     }
 
-        return sandboxDir().child("/usr/bin/vscode-css-language-server").exists()
-    }
-
     override fun install(context: Context) {
         // TODO: Implement LSP installation without terminal dependency
         // The terminal-based installation has been removed

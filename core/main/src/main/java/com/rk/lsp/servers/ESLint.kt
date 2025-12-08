@@ -27,9 +27,6 @@ class ESLint() : BaseLspServer() {
         return false
     }
 
-        return sandboxDir().child("/usr/bin/vscode-eslint-language-server").exists()
-    }
-
     override fun install(context: Context) {
         // TODO: Implement LSP installation without terminal dependency
         // The terminal-based installation has been removed

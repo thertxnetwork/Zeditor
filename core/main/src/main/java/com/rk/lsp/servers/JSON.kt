@@ -23,9 +23,6 @@ class JSON() : BaseLspServer() {
         return false
     }
 
-        return sandboxDir().child("/usr/bin/vscode-json-language-server").exists()
-    }
-
     override suspend fun beforeConnect() {}
 
     override suspend fun connectionSuccess(lspConnector: BaseLspConnector) {}
