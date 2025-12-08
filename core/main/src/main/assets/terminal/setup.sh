@@ -4,22 +4,30 @@ source "$PRIVATE_DIR/local/bin/utils"
 
 info "Extracting the Ubuntu container…"
 
-# Extract the rootfs using proot with --link2symlink
-# This converts hard links to symbolic links, which is necessary on Android
-# where hard link creation may be restricted
-COMMAND="cd '$LOCAL/sandbox' && tar -xf '$TMP_DIR/sandbox.tar.gz'"
+# Extract the rootfs directly using tar without proot
+# We don't need proot for extraction since we're just unpacking files on Android's filesystem
+# Use busybox tar if available, otherwise try system tar
+cd "$LOCAL/sandbox" || exit 1
 
-if [ "$FDROID" = "false" ]; then
-    if ! $LINKER "$PRIVATE_DIR/local/bin/proot" --link2symlink -w / /system/bin/sh -c "$COMMAND"; then
-        error "Failed to extract Ubuntu container"
+# Try to extract with available tar implementation
+if command -v busybox >/dev/null 2>&1; then
+    info "Using busybox tar for extraction"
+    if ! busybox tar -xzf "$TMP_DIR/sandbox.tar.gz" 2>&1; then
+        error "Failed to extract Ubuntu container with busybox"
+        exit 1
+    fi
+elif command -v tar >/dev/null 2>&1; then
+    info "Using system tar for extraction"
+    if ! tar -xzf "$TMP_DIR/sandbox.tar.gz" 2>&1; then
+        error "Failed to extract Ubuntu container with system tar"
         exit 1
     fi
 else
-    if ! "$PRIVATE_DIR/local/bin/proot" --link2symlink -w / /system/bin/sh -c "$COMMAND"; then
-        error "Failed to extract Ubuntu container"
-        exit 1
-    fi
+    error "No tar command available for extraction"
+    exit 1
 fi
+
+cd - > /dev/null || exit 1
 
 
 SANDBOX_DIR="$LOCAL/sandbox"
@@ -88,8 +96,8 @@ rm "$TMP_DIR"/sandbox.tar.gz
 touch "$LOCAL/.terminal_setup_ok_DO_NOT_REMOVE"
 
 if [ $# -gt 0 ]; then
-    sh "$@"
+    exec "$@"
 else
     clear
-    sh "$PRIVATE_DIR/local/bin/sandbox"
+    exec "$PRIVATE_DIR/local/bin/sandbox"
 fi
