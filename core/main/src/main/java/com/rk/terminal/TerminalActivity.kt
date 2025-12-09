@@ -237,7 +237,8 @@ class TerminalActivity : AppCompatActivity() {
         val command = bootstrap.getLaunchCommand()
         val environment = bootstrap.getEnvironment()
         
-        createTerminalSession(command, environment.toTypedArray(), bootstrap.getPrefix())
+        // Join command array into a single command string
+        createTerminalSession(command.joinToString(" "), environment, bootstrap.rootfsPath.absolutePath)
     }
     
     private fun setupInputHandling() {
