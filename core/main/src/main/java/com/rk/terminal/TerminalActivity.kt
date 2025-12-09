@@ -299,13 +299,10 @@ class TerminalActivity : AppCompatActivity() {
         environment.add("TERM=xterm-256color")
         environment.addAll(env)
         
-        // Build command array
-        val fullCommand = arrayOf(command) + args
-        
-        createTerminalSession(fullCommand.joinToString(" "), environment.toTypedArray(), workdir)
+        createTerminalSession(command, args, environment.toTypedArray(), workdir)
     }
     
-    private fun createTerminalSession(executablePath: String, environment: Array<String>, cwd: String) {
+    private fun createTerminalSession(shellPath: String, args: Array<String>, environment: Array<String>, cwd: String) {
         val sessionClient = object : TerminalSessionClient {
             override fun onTextChanged(changedSession: TerminalSession) {
                 terminalView.onScreenUpdated()
@@ -393,9 +390,9 @@ class TerminalActivity : AppCompatActivity() {
         }
         
         terminalSession = TerminalSession(
-            executablePath,
+            shellPath,
             cwd,
-            arrayOf(),
+            args,
             environment,
             TerminalSession.TERMINAL_TRANSCRIPT_ROWS_DEFAULT,
             sessionClient
