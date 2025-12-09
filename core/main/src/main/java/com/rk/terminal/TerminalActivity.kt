@@ -237,8 +237,12 @@ class TerminalActivity : AppCompatActivity() {
         val command = bootstrap.getLaunchCommand()
         val environment = bootstrap.getEnvironment()
         
-        // Join command array into a single command string
-        createTerminalSession(command.joinToString(" "), environment, bootstrap.rootfsPath.absolutePath)
+        // Create terminal session with proper parameters
+        val shellPath = command[0]
+        val args = command.drop(1).toTypedArray()
+        val env = environment.map { "${it.key}=${it.value}" }.toTypedArray()
+        
+        createTerminalSession(shellPath, args, env, bootstrap.rootfsPath.absolutePath)
     }
     
     private fun setupInputHandling() {
@@ -312,6 +316,10 @@ class TerminalActivity : AppCompatActivity() {
                 // Update title if needed
             }
             
+            override fun setTerminalShellPid(session: TerminalSession, pid: Int) {
+                // Store shell PID if needed
+            }
+            
             override fun onSessionFinished(finishedSession: TerminalSession) {
                 runOnUiThread {
                     AlertDialog.Builder(this@TerminalActivity)
@@ -357,7 +365,7 @@ class TerminalActivity : AppCompatActivity() {
             }
             
             override fun getTerminalCursorStyle(): Int {
-                return TerminalSessionClient.TERMINAL_CURSOR_STYLE_BLOCK
+                return com.termux.terminal.TerminalEmulator.TERMINAL_CURSOR_STYLE_BLOCK
             }
             
             override fun logError(tag: String?, message: String?) {
@@ -394,7 +402,7 @@ class TerminalActivity : AppCompatActivity() {
             cwd,
             args,
             environment,
-            TerminalSession.TERMINAL_TRANSCRIPT_ROWS_DEFAULT,
+            com.termux.terminal.TerminalEmulator.DEFAULT_TERMINAL_TRANSCRIPT_ROWS,
             sessionClient
         )
         
