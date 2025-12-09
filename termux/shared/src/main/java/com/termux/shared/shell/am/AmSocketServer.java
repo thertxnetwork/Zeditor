@@ -229,8 +229,6 @@ public class AmSocketServer {
         } catch (Exception e) {
             return AmSocketServerErrno.ERRNO_RUN_AM_COMMAND_FAILED_WITH_EXCEPTION.getError(e, Arrays.toString(amCommandArray), e.getMessage());
         }
-
-        return null;
     }
 
 
