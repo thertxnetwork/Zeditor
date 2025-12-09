@@ -70,10 +70,19 @@ object ShellBasedRunners {
 
 data class ShellBasedRunner(private val name: String, val regex: String) : RunnerImpl() {
     override suspend fun run(context: Context, fileObject: FileObject) {
-        // TODO: Implement shell-based runner without terminal dependency
-        // The terminal-based runner has been removed
-        // User needs to implement a different way to run custom scripts
-        errorDialog(msgRes = strings.unsupported_feature)
+        val scriptFile = getScript()
+        val workDir = fileObject.getParentFile()?.getAbsolutePath() ?: context.filesDir.absolutePath
+        val filePath = fileObject.getAbsolutePath()
+        
+        // Launch terminal with custom script
+        val intent = android.content.Intent(context, com.rk.terminal.TerminalActivity::class.java).apply {
+            putExtra(com.rk.terminal.TerminalActivity.EXTRA_COMMAND, "/system/bin/sh")
+            putExtra(com.rk.terminal.TerminalActivity.EXTRA_ARGS, arrayOf(scriptFile.absolutePath, filePath))
+            putExtra(com.rk.terminal.TerminalActivity.EXTRA_WORKDIR, workDir)
+            putExtra(com.rk.terminal.TerminalActivity.EXTRA_TITLE, "${name}: ${fileObject.getName()}")
+        }
+        
+        context.startActivity(intent)
     }
 
     override fun getName(): String {

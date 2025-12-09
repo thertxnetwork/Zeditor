@@ -38,6 +38,7 @@ import com.rk.icons.XedIcons
 import com.rk.resources.drawables
 import com.rk.resources.strings
 import com.rk.settings.app.InbuiltFeatures
+import com.rk.terminal.TerminalActivity
 import com.rk.utils.application
 import com.rk.utils.errorDialog
 import com.rk.utils.toast
@@ -52,6 +53,18 @@ fun RowScope.GlobalActions(viewModel: MainViewModel) {
     val context = LocalContext.current
     if (viewModel.tabs.isEmpty() || viewModel.currentTab?.showGlobalActions == true) {
         IconButton(onClick = { addDialog = true }) { Icon(imageVector = Icons.Outlined.Add, contentDescription = null) }
+
+        // Terminal button
+        IconButton(
+            onClick = {
+                val intent = Intent(context, TerminalActivity::class.java).apply {
+                    putExtra(TerminalActivity.EXTRA_TITLE, "Terminal")
+                }
+                context.startActivity(intent)
+            }
+        ) {
+            Icon(painter = painterResource(drawables.bash), contentDescription = "Open Terminal")
+        }
 
         IconButton(
             onClick = {
@@ -130,6 +143,23 @@ fun RowScope.GlobalActions(viewModel: MainViewModel) {
                             }
                         }
                     }
+                }
+
+                AddDialogItem(icon = drawables.bash, title = "Terminal") {
+                    addDialog = false
+                    val intent = Intent(context, TerminalActivity::class.java).apply {
+                        putExtra(TerminalActivity.EXTRA_TITLE, "Terminal")
+                    }
+                    context.startActivity(intent)
+                }
+
+                AddDialogItem(icon = drawables.bash, title = "Ubuntu Terminal (Full)") {
+                    addDialog = false
+                    val intent = Intent(context, TerminalActivity::class.java).apply {
+                        putExtra(TerminalActivity.EXTRA_TITLE, "Ubuntu Terminal")
+                        putExtra(TerminalActivity.EXTRA_UBUNTU_MODE, true)
+                    }
+                    context.startActivity(intent)
                 }
             }
         }

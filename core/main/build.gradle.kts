@@ -141,6 +141,9 @@ dependencies {
     // implementation(project(":core:extension"))
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidsvg.aar)
+    
+    // Apache Commons Compress for tar.gz extraction
+    implementation(libs.commons.compress)
 }
 
 abstract class GenerateSupportedLocales : DefaultTask() {
