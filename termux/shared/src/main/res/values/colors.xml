@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Colors referenced by termux shared layouts -->
+    <color name="red_400">#EF5350</color>
+    <color name="background_markdown_code_block">#1E1E1E</color>
+</resources>
