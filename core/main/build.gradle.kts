@@ -139,6 +139,12 @@ dependencies {
     implementation(project(":core:resources"))
     implementation(project(":core:components"))
     // implementation(project(":core:extension"))
+    
+    // Termux modules for proper terminal emulation
+    implementation(project(":termux:emulator"))
+    implementation(project(":termux:view"))
+    implementation(project(":termux:shared"))
+    
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidsvg.aar)
     
