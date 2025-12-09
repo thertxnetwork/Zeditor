@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import java.io.*
 import java.util.concurrent.TimeUnit
 
@@ -140,62 +142,67 @@ class UbuntuBootstrap(private val context: Context) {
     }
     
     /**
-     * Extract the tarball using tar command
+     * Extract the tarball using Apache Commons Compress
      */
     private suspend fun extractRootfs(
         progressCallback: (String, Int) -> Unit
     ) = withContext(Dispatchers.IO) {
         progressCallback("Extracting files (this may take a while)...", 50)
         
-        // Try using system tar command
         try {
-            val process = ProcessBuilder()
-                .command(
-                    "tar",
-                    "-xzf",
-                    tarballPath.absolutePath,
-                    "-C",
-                    rootfsPath.absolutePath
-                )
-                .redirectErrorStream(true)
-                .start()
-            
-            // Monitor progress
-            val reader = BufferedReader(InputStreamReader(process.inputStream))
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                Log.d(TAG, "tar: $line")
+            FileInputStream(tarballPath).use { fis ->
+                BufferedInputStream(fis).use { bis ->
+                    GzipCompressorInputStream(bis).use { gzis ->
+                        TarArchiveInputStream(gzis).use { tais ->
+                            var entry = tais.nextTarEntry
+                            var filesExtracted = 0
+                            
+                            while (entry != null) {
+                                val outputFile = File(rootfsPath, entry.name)
+                                
+                                if (entry.isDirectory) {
+                                    outputFile.mkdirs()
+                                } else {
+                                    // Ensure parent directory exists
+                                    outputFile.parentFile?.mkdirs()
+                                    
+                                    // Extract file
+                                    FileOutputStream(outputFile).use { fos ->
+                                        val buffer = ByteArray(8192)
+                                        var len: Int
+                                        while (tais.read(buffer).also { len = it } != -1) {
+                                            fos.write(buffer, 0, len)
+                                        }
+                                    }
+                                    
+                                    // Set file permissions (if available)
+                                    if (entry.mode and 0x100 != 0) { // Check if executable
+                                        outputFile.setExecutable(true, false)
+                                    }
+                                    outputFile.setReadable(true, false)
+                                    if (entry.mode and 0x80 != 0) { // Check if writable
+                                        outputFile.setWritable(true, false)
+                                    }
+                                }
+                                
+                                // Update progress periodically
+                                filesExtracted++
+                                if (filesExtracted % 100 == 0) {
+                                    val progress = 50 + (filesExtracted / 100).coerceAtMost(30)
+                                    progressCallback("Extracting... ($filesExtracted files)", progress)
+                                }
+                                
+                                entry = tais.nextTarEntry
+                            }
+                            
+                            progressCallback("Extraction complete", 80)
+                        }
+                    }
+                }
             }
-            
-            val exitCode = process.waitFor()
-            if (exitCode != 0) {
-                throw IOException("tar extraction failed with exit code: $exitCode")
-            }
-            
-            progressCallback("Extraction complete", 80)
-            
         } catch (e: Exception) {
-            Log.e(TAG, "System tar failed, trying busybox", e)
-            
-            // Fallback: Try busybox tar
-            val process = ProcessBuilder()
-                .command(
-                    "busybox",
-                    "tar",
-                    "-xzf",
-                    tarballPath.absolutePath,
-                    "-C",
-                    rootfsPath.absolutePath
-                )
-                .redirectErrorStream(true)
-                .start()
-            
-            val exitCode = process.waitFor()
-            if (exitCode != 0) {
-                throw IOException("busybox tar extraction failed with exit code: $exitCode")
-            }
-            
-            progressCallback("Extraction complete", 80)
+            Log.e(TAG, "Extraction failed", e)
+            throw IOException("Failed to extract Ubuntu rootfs: ${e.message}", e)
         }
     }
     
