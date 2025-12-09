@@ -62,9 +62,6 @@ class TerminalActivity : AppCompatActivity() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_UBUNTU_MODE = "ubuntu_mode"
         
-        // Delay before showing soft keyboard to ensure view is ready
-        private const val KEYBOARD_SHOW_DELAY_MS = 100L
-        
         // Default extra keys configuration for the terminal
         // Two rows: top row has ESC, TAB, CTRL, ALT, special chars, and navigation
         // bottom row has SHIFT, more navigation, PASTE, and function keys
@@ -543,10 +540,8 @@ class TerminalActivity : AppCompatActivity() {
             // Setup extra keys after terminal session is attached
             setupExtraKeys()
             
-            // Show soft keyboard after a short delay to ensure view is ready
-            terminalView.postDelayed({
-                showSoftKeyboard()
-            }, KEYBOARD_SHOW_DELAY_MS)
+            // Note: Keyboard is not shown automatically to keep extra keys visible.
+            // Users can tap the terminal to show the keyboard when needed.
         }
     }
     
