@@ -57,6 +57,10 @@ class TerminalActivity : AppCompatActivity() {
         bootstrap = UbuntuBootstrap(this)
         isUbuntuMode = intent.getBooleanExtra(EXTRA_UBUNTU_MODE, false)
         
+        // Initialize TerminalRenderer with default text size
+        // This must be done before attaching any session to prevent NullPointerException
+        terminalView.setTextSize(14)
+        
         // Setup terminal view client
         terminalView.setTerminalViewClient(object : TerminalViewClient {
             override fun onScale(scale: Float): Float {
