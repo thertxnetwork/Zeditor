@@ -3,6 +3,7 @@ package com.rk.terminal
 import android.app.AlertDialog
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
@@ -17,6 +18,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.view.inputmethod.InputMethodManager
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.termux.shared.termux.extrakeys.ExtraKeyButton
 import com.termux.shared.termux.extrakeys.ExtraKeysConstants
 import com.termux.shared.termux.extrakeys.ExtraKeysInfo
@@ -43,11 +45,17 @@ class TerminalActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var progressText: TextView
     private lateinit var progressLayout: View
+    private lateinit var toggleExtraKeysFab: FloatingActionButton
     
     private lateinit var bootstrap: UbuntuBootstrap
     private var isUbuntuMode = false
     private var terminalSession: TerminalSession? = null
     private var terminalExtraKeys: TerminalExtraKeys? = null
+    
+    // For draggable FAB
+    private var dX = 0f
+    private var dY = 0f
+    private var lastAction = 0
     
     // Terminal text size and scale
     private var mTerminalTextSize = 14f
@@ -86,9 +94,13 @@ class TerminalActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progress_bar)
         progressText = findViewById(R.id.progress_text)
         progressLayout = findViewById(R.id.progress_layout)
+        toggleExtraKeysFab = findViewById(R.id.toggle_extra_keys_fab)
         
         bootstrap = UbuntuBootstrap(this)
         isUbuntuMode = intent.getBooleanExtra(EXTRA_UBUNTU_MODE, false)
+        
+        // Setup toggle extra keys FAB
+        setupToggleExtraKeysFab()
         
         // Initialize TerminalRenderer with default text size
         // This must be done before attaching any session to prevent NullPointerException
@@ -321,10 +333,44 @@ class TerminalActivity : AppCompatActivity() {
             // Load the extra keys
             extraKeysView.reload(extraKeysInfoObj, 1.0f)
             
-            // Ensure extra keys view is visible
-            extraKeysView.visibility = View.VISIBLE
+            // Start with extra keys hidden - user can show via FAB
+            extraKeysView.visibility = View.GONE
         } catch (e: Exception) {
             android.util.Log.e("TerminalActivity", "Failed to setup extra keys", e)
+        }
+    }
+    
+    private fun setupToggleExtraKeysFab() {
+        // Toggle extra keys visibility on click
+        toggleExtraKeysFab.setOnClickListener {
+            if (extraKeysView.visibility == View.VISIBLE) {
+                extraKeysView.visibility = View.GONE
+            } else {
+                extraKeysView.visibility = View.VISIBLE
+            }
+        }
+        
+        // Make FAB draggable
+        toggleExtraKeysFab.setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    dX = view.x - event.rawX
+                    dY = view.y - event.rawY
+                    lastAction = MotionEvent.ACTION_DOWN
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    view.x = event.rawX + dX
+                    view.y = event.rawY + dY
+                    lastAction = MotionEvent.ACTION_MOVE
+                }
+                MotionEvent.ACTION_UP -> {
+                    // If it was just a tap (not a drag), perform click
+                    if (lastAction == MotionEvent.ACTION_DOWN) {
+                        view.performClick()
+                    }
+                }
+            }
+            true
         }
     }
     
