@@ -240,7 +240,7 @@ class TerminalActivity : AppCompatActivity() {
         // Create terminal session with proper parameters
         val shellPath = command[0]
         val args = command.drop(1).toTypedArray()
-        val env = environment.map { "${it.key}=${it.value}" }.toTypedArray()
+        val env = environment // Already in "KEY=VALUE" format from getEnvironment()
         
         createTerminalSession(shellPath, args, env, bootstrap.rootfsPath.absolutePath)
     }
