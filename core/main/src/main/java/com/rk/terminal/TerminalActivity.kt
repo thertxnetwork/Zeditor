@@ -320,6 +320,9 @@ class TerminalActivity : AppCompatActivity() {
             
             // Load the extra keys
             extraKeysView.reload(extraKeysInfoObj, 1.0f)
+            
+            // Ensure extra keys view is visible
+            extraKeysView.visibility = View.VISIBLE
         } catch (e: Exception) {
             android.util.Log.e("TerminalActivity", "Failed to setup extra keys", e)
         }
