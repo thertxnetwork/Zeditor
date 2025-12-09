@@ -5,4 +5,13 @@
     <string name="action_copy">Copy</string>
     <string name="action_save_to_file">Save to file</string>
     <string name="action_cancel">Cancel</string>
+    
+    <!-- Error messages for PackageUtils -->
+    <string name="error_get_package_context_failed_title">Get Package Context Failed</string>
+    <string name="error_get_package_context_failed_message">Failed to get package context for "%1$s" package.\n%2$s</string>
+    <string name="error_get_package_context_failed_help_url_message">Check %1$s for more info.</string>
+    <string name="error_app_not_installed_or_disabled_warning">The "%1$s" app with package name "%2$s" is not installed or is disabled.</string>
+    <string name="error_enable_component_failed">Failed to enable component</string>
+    <string name="error_disable_component_failed">Failed to disable component</string>
+    <string name="error_get_component_state_failed">Failed to get component state for package "%1$s", class "%2$s"</string>
 </resources>
