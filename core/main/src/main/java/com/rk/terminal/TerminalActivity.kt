@@ -406,8 +406,11 @@ class TerminalActivity : AppCompatActivity() {
             sessionClient
         )
         
-        terminalView.attachSession(terminalSession)
-        terminalView.requestFocus()
+        // Post to ensure TerminalView layout is complete before attaching session
+        terminalView.post {
+            terminalView.attachSession(terminalSession)
+            terminalView.requestFocus()
+        }
     }
     
     override fun onDestroy() {
