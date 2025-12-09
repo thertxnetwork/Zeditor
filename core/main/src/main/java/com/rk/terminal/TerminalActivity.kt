@@ -52,11 +52,11 @@ class TerminalActivity : AppCompatActivity() {
         
         // Default extra keys configuration for the terminal
         // Two rows: top row has ESC, TAB, CTRL, ALT, special chars, and navigation
-        // bottom row has SHIFT, more navigation, and function keys
+        // bottom row has SHIFT, more navigation, PASTE, and function keys
         private const val DEFAULT_EXTRA_KEYS = """
             [
-              ["ESC", "TAB", "CTRL", "ALT", "-", "DOWN", "UP", "/"],
-              ["SHIFT", "LEFT", "RIGHT", "HOME", "END", "PGUP", "PGDN", "KEYBOARD"]
+              ["ESC", "/", "-", "HOME", "UP", "END", "PGUP", "DEL"],
+              ["TAB", "CTRL", "ALT", "SHIFT", "LEFT", "DOWN", "RIGHT", "PGDN"]
             ]
         """
     }
