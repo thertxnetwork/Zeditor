@@ -3,6 +3,7 @@ package com.rk.terminal
 import android.app.AlertDialog
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
@@ -15,7 +16,9 @@ import androidx.lifecycle.lifecycleScope
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.view.inputmethod.InputMethodManager
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.termux.shared.termux.extrakeys.ExtraKeyButton
 import com.termux.shared.termux.extrakeys.ExtraKeysConstants
 import com.termux.shared.termux.extrakeys.ExtraKeysInfo
@@ -42,11 +45,17 @@ class TerminalActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var progressText: TextView
     private lateinit var progressLayout: View
+    private lateinit var toggleExtraKeysFab: FloatingActionButton
     
     private lateinit var bootstrap: UbuntuBootstrap
     private var isUbuntuMode = false
     private var terminalSession: TerminalSession? = null
     private var terminalExtraKeys: TerminalExtraKeys? = null
+    
+    // For draggable FAB
+    private var dX = 0f
+    private var dY = 0f
+    private var lastAction = 0
     
     // Terminal text size and scale
     private var mTerminalTextSize = 14f
@@ -85,9 +94,16 @@ class TerminalActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progress_bar)
         progressText = findViewById(R.id.progress_text)
         progressLayout = findViewById(R.id.progress_layout)
+        toggleExtraKeysFab = findViewById(R.id.toggle_extra_keys_fab)
         
         bootstrap = UbuntuBootstrap(this)
         isUbuntuMode = intent.getBooleanExtra(EXTRA_UBUNTU_MODE, false)
+        
+        // Setup toggle extra keys FAB
+        setupToggleExtraKeysFab()
+        
+        // Setup extra keys early so they're ready when FAB is clicked
+        setupExtraKeys()
         
         // Initialize TerminalRenderer with default text size
         // This must be done before attaching any session to prevent NullPointerException
@@ -105,6 +121,7 @@ class TerminalActivity : AppCompatActivity() {
             override fun onSingleTapUp(e: android.view.MotionEvent?) {
                 // Show soft keyboard when terminal is tapped
                 terminalView.requestFocus()
+                showSoftKeyboard()
             }
             
             override fun shouldBackButtonBeMappedToEscape(): Boolean {
@@ -318,8 +335,54 @@ class TerminalActivity : AppCompatActivity() {
             
             // Load the extra keys
             extraKeysView.reload(extraKeysInfoObj, 1.0f)
+            
+            // Start with extra keys hidden - user can show via FAB
+            extraKeysView.visibility = View.GONE
         } catch (e: Exception) {
             android.util.Log.e("TerminalActivity", "Failed to setup extra keys", e)
+        }
+    }
+    
+    private fun setupToggleExtraKeysFab() {
+        // Make FAB draggable with click support
+        toggleExtraKeysFab.setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    dX = view.x - event.rawX
+                    dY = view.y - event.rawY
+                    lastAction = MotionEvent.ACTION_DOWN
+                    false // Return false to allow click event to be processed
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    view.x = event.rawX + dX
+                    view.y = event.rawY + dY
+                    lastAction = MotionEvent.ACTION_MOVE
+                    true // Consume move event
+                }
+                MotionEvent.ACTION_UP -> {
+                    // If it was a drag (not just a tap), consume the event
+                    if (lastAction == MotionEvent.ACTION_MOVE) {
+                        true // Consume to prevent click after drag
+                    } else {
+                        false // Allow click to be processed
+                    }
+                }
+                else -> false
+            }
+        }
+        
+        // Toggle extra keys visibility on click
+        toggleExtraKeysFab.setOnClickListener {
+            android.util.Log.d("TerminalActivity", "FAB clicked, current visibility: ${extraKeysView.visibility}")
+            if (extraKeysView.visibility == View.VISIBLE) {
+                extraKeysView.visibility = View.GONE
+                android.util.Log.d("TerminalActivity", "Extra keys hidden")
+            } else {
+                extraKeysView.visibility = View.VISIBLE
+                android.util.Log.d("TerminalActivity", "Extra keys shown")
+                // Request layout to ensure view is properly displayed
+                extraKeysView.requestLayout()
+            }
         }
     }
     
@@ -535,8 +598,16 @@ class TerminalActivity : AppCompatActivity() {
             terminalView.attachSession(terminalSession)
             terminalView.requestFocus()
             
-            // Setup extra keys after terminal session is attached
-            setupExtraKeys()
+            // Note: Keyboard is not shown automatically to keep extra keys visible.
+            // Users can tap the terminal to show the keyboard when needed.
+        }
+    }
+    
+    private fun showSoftKeyboard() {
+        // Post to message queue to ensure view is ready and has focus
+        terminalView.post {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(terminalView, InputMethodManager.SHOW_IMPLICIT)
         }
     }
     

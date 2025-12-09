@@ -16,7 +16,9 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="#000000" />
+            android:background="#000000"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
 
         <!-- Extra Keys View -->
         <com.termux.shared.termux.extrakeys.ExtraKeysView
@@ -26,7 +28,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:background="#1A1A1A"
-            android:visibility="visible" />
+            android:visibility="gone" />
         
         <!-- Input Area -->
         <LinearLayout
@@ -110,5 +112,17 @@
             android:gravity="center"
             android:fontFamily="monospace" />
     </LinearLayout>
+
+    <!-- Floating button to toggle extra keys -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/toggle_extra_keys_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:src="@android:drawable/ic_menu_preferences"
+        android:contentDescription="Toggle Extra Keys"
+        android:backgroundTint="#424242"
+        android:tint="#FFFFFF" />
 
 </FrameLayout>
