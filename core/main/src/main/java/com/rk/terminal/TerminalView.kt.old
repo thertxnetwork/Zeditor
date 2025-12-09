@@ -24,6 +24,8 @@ class TerminalView @JvmOverloads constructor(
         private const val LINE_HEIGHT = 45f
     }
     
+    private val ansiParser = AnsiParser()
+    
     private val textPaint = TextPaint().apply {
         color = Color.parseColor("#00FF00") // Terminal green
         typeface = Typeface.MONOSPACE
@@ -41,7 +43,8 @@ class TerminalView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
     
-    private val lines = mutableListOf<String>()
+    // Store lines with their parsed ANSI styling
+    private val lines = mutableListOf<List<AnsiParser.ParsedText>>()
     private var currentLine = StringBuilder()
     private val inputQueue = LinkedBlockingQueue<String>()
     
@@ -135,13 +138,22 @@ class TerminalView @JvmOverloads constructor(
     }
     
     /**
-     * Append text to terminal output
+     * Append text to terminal output with ANSI escape sequence support
      */
     private fun appendOutput(text: String) {
-        for (char in text) {
+        // Process text character by character to handle control codes
+        var i = 0
+        while (i < text.length) {
+            val char = text[i]
             when (char) {
                 '\n' -> {
-                    lines.add(currentLine.toString())
+                    // Parse current line with ANSI codes before adding
+                    val parsedLine = if (currentLine.isNotEmpty()) {
+                        ansiParser.parse(currentLine.toString())
+                    } else {
+                        listOf(AnsiParser.ParsedText("", AnsiParser.TextStyle()))
+                    }
+                    lines.add(parsedLine)
                     currentLine.clear()
                     
                     // Limit number of lines
@@ -159,14 +171,18 @@ class TerminalView @JvmOverloads constructor(
                         currentLine.deleteCharAt(currentLine.length - 1)
                     }
                 }
-                else -> {
-                    if (char.isISOControl()) {
-                        // Ignore other control characters
-                        continue
-                    }
+                '\u001B' -> {
+                    // ESC character - start of escape sequence, add to buffer
                     currentLine.append(char)
                 }
+                else -> {
+                    // Add printable characters and escape sequences to buffer
+                    if (!char.isISOControl() || currentLine.isNotEmpty() && currentLine.last() == '\u001B') {
+                        currentLine.append(char)
+                    }
+                }
             }
+            i++
         }
         
         // Auto-scroll to bottom
@@ -184,20 +200,81 @@ class TerminalView @JvmOverloads constructor(
         val firstVisibleLine = (scrollY / LINE_HEIGHT).toInt()
         val lastVisibleLine = ((scrollY + height) / LINE_HEIGHT).toInt() + 1
         
-        // Draw lines
+        // Draw lines with ANSI styling
         var y = LINE_HEIGHT - (scrollY % LINE_HEIGHT)
         
         for (i in firstVisibleLine until minOf(lastVisibleLine, lines.size)) {
-            canvas.drawText(lines[i], 20f, y, textPaint)
+            var x = 20f
+            val parsedSegments = lines[i]
+            
+            for (segment in parsedSegments) {
+                // Set text color based on ANSI style
+                val effectiveStyle = segment.style
+                val fgColor = if (effectiveStyle.reverse) effectiveStyle.bgColor else effectiveStyle.fgColor
+                val bgColor = if (effectiveStyle.reverse) effectiveStyle.fgColor else effectiveStyle.bgColor
+                
+                // Draw background if not default
+                if (bgColor != Color.parseColor("#000000")) {
+                    val textWidth = textPaint.measureText(segment.text)
+                    canvas.drawRect(x, y - LINE_HEIGHT + 5, x + textWidth, y, Paint().apply {
+                        color = bgColor
+                        style = Paint.Style.FILL
+                    })
+                }
+                
+                // Apply text style
+                textPaint.color = fgColor
+                textPaint.isFakeBoldText = effectiveStyle.bold
+                textPaint.isUnderlineText = effectiveStyle.underline
+                
+                // Draw text
+                canvas.drawText(segment.text, x, y, textPaint)
+                x += textPaint.measureText(segment.text)
+                
+                // Reset paint
+                textPaint.isFakeBoldText = false
+                textPaint.isUnderlineText = false
+            }
+            
             y += LINE_HEIGHT
         }
         
-        // Draw current line
+        // Draw current line with ANSI styling
         if (lines.size >= firstVisibleLine && lines.size <= lastVisibleLine) {
-            canvas.drawText(currentLine.toString(), 20f, y, textPaint)
+            val currentText = currentLine.toString()
+            var x = 20f
+            
+            if (currentText.isNotEmpty()) {
+                val parsedSegments = ansiParser.parse(currentText)
+                
+                for (segment in parsedSegments) {
+                    val effectiveStyle = segment.style
+                    val fgColor = if (effectiveStyle.reverse) effectiveStyle.bgColor else effectiveStyle.fgColor
+                    val bgColor = if (effectiveStyle.reverse) effectiveStyle.fgColor else effectiveStyle.bgColor
+                    
+                    // Draw background if not default
+                    if (bgColor != Color.parseColor("#000000")) {
+                        val textWidth = textPaint.measureText(segment.text)
+                        canvas.drawRect(x, y - LINE_HEIGHT + 5, x + textWidth, y, Paint().apply {
+                            color = bgColor
+                            style = Paint.Style.FILL
+                        })
+                    }
+                    
+                    textPaint.color = fgColor
+                    textPaint.isFakeBoldText = effectiveStyle.bold
+                    textPaint.isUnderlineText = effectiveStyle.underline
+                    
+                    canvas.drawText(segment.text, x, y, textPaint)
+                    x += textPaint.measureText(segment.text)
+                    
+                    textPaint.isFakeBoldText = false
+                    textPaint.isUnderlineText = false
+                }
+            }
             
             // Draw cursor
-            val cursorX = 20f + (currentLine.length * CHAR_WIDTH)
+            val cursorX = x
             canvas.drawRect(
                 cursorX, y - LINE_HEIGHT + 10,
                 cursorX + CHAR_WIDTH, y - 5,

@@ -12,8 +12,13 @@ import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.termux.terminal.TerminalSession
+import com.termux.terminal.TerminalSessionClient
+import com.termux.view.TerminalView
+import com.termux.view.TerminalViewClient
 import com.thertxnetwork.zeditor.core.main.R
 import kotlinx.coroutines.launch
+import java.io.File
 
 class TerminalActivity : AppCompatActivity() {
     
@@ -26,6 +31,7 @@ class TerminalActivity : AppCompatActivity() {
     
     private lateinit var bootstrap: UbuntuBootstrap
     private var isUbuntuMode = false
+    private var terminalSession: TerminalSession? = null
     
     companion object {
         const val EXTRA_COMMAND = "command"
@@ -50,6 +56,106 @@ class TerminalActivity : AppCompatActivity() {
         
         bootstrap = UbuntuBootstrap(this)
         isUbuntuMode = intent.getBooleanExtra(EXTRA_UBUNTU_MODE, false)
+        
+        // Initialize TerminalRenderer with default text size
+        // This must be done before attaching any session to prevent NullPointerException
+        terminalView.setTextSize(14)
+        
+        // Setup terminal view client
+        terminalView.setTerminalViewClient(object : TerminalViewClient {
+            override fun onScale(scale: Float): Float {
+                return scale
+            }
+            
+            override fun onSingleTapUp(e: android.view.MotionEvent?) {
+                // Show keyboard
+                inputField.requestFocus()
+            }
+            
+            override fun shouldBackButtonBeMappedToEscape(): Boolean {
+                return false
+            }
+            
+            override fun shouldEnforceCharBasedInput(): Boolean {
+                return true
+            }
+            
+            override fun shouldUseCtrlSpaceWorkaround(): Boolean {
+                return false
+            }
+            
+            override fun isTerminalViewSelected(): Boolean {
+                return true
+            }
+            
+            override fun copyModeChanged(copyMode: Boolean) {
+                // Handle copy mode
+            }
+            
+            override fun onKeyDown(keyCode: Int, e: KeyEvent?, session: TerminalSession?): Boolean {
+                return false
+            }
+            
+            override fun onKeyUp(keyCode: Int, e: KeyEvent?): Boolean {
+                return false
+            }
+            
+            override fun onLongPress(event: android.view.MotionEvent?): Boolean {
+                return false
+            }
+            
+            override fun readControlKey(): Boolean {
+                return false
+            }
+            
+            override fun readAltKey(): Boolean {
+                return false
+            }
+            
+            override fun readShiftKey(): Boolean {
+                return false
+            }
+            
+            override fun readFnKey(): Boolean {
+                return false
+            }
+            
+            override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession?): Boolean {
+                return false
+            }
+            
+            override fun onEmulatorSet() {
+                // Terminal emulator ready
+            }
+            
+            override fun logError(tag: String?, message: String?) {
+                android.util.Log.e(tag ?: "Terminal", message ?: "Unknown error")
+            }
+            
+            override fun logWarn(tag: String?, message: String?) {
+                android.util.Log.w(tag ?: "Terminal", message ?: "Unknown warning")
+            }
+            
+            override fun logInfo(tag: String?, message: String?) {
+                android.util.Log.i(tag ?: "Terminal", message ?: "Unknown info")
+            }
+            
+            override fun logDebug(tag: String?, message: String?) {
+                android.util.Log.d(tag ?: "Terminal", message ?: "Unknown debug")
+            }
+            
+            override fun logVerbose(tag: String?, message: String?) {
+                android.util.Log.v(tag ?: "Terminal", message ?: "Unknown verbose")
+            }
+            
+            override fun logStackTraceWithMessage(tag: String?, message: String?, e: Exception?) {
+                android.util.Log.e(tag ?: "Terminal", message ?: "Unknown error", e)
+            }
+            
+            override fun logStackTrace(tag: String?, e: Exception?) {
+                android.util.Log.e(tag ?: "Terminal", "Exception", e)
+            }
+        })
         
         // Setup input handling
         setupInputHandling()
@@ -135,17 +241,12 @@ class TerminalActivity : AppCompatActivity() {
         val command = bootstrap.getLaunchCommand()
         val environment = bootstrap.getEnvironment()
         
-        // Build environment map
-        val envMap = mutableMapOf<String, String>()
-        environment.forEach { envVar ->
-            val parts = envVar.split("=", limit = 2)
-            if (parts.size == 2) {
-                envMap[parts[0]] = parts[1]
-            }
-        }
+        // Create terminal session with proper parameters
+        val shellPath = command[0]
+        val args = command.drop(1).toTypedArray()
+        val env = environment // Already in "KEY=VALUE" format from getEnvironment()
         
-        terminalView.startSession(command, envMap)
-        terminalView.requestFocus()
+        createTerminalSession(shellPath, args, env, bootstrap.rootfsPath.absolutePath)
     }
     
     private fun setupInputHandling() {
@@ -181,8 +282,8 @@ class TerminalActivity : AppCompatActivity() {
     
     private fun sendCommand() {
         val text = inputField.text.toString()
-        if (text.isNotEmpty()) {
-            terminalView.sendInput(text + "\n")
+        if (text.isNotEmpty() && terminalSession != null) {
+            terminalSession?.write(text + "\r")
             inputField.text.clear()
         }
     }
@@ -198,45 +299,126 @@ class TerminalActivity : AppCompatActivity() {
         // Set activity title
         setTitle(title)
         
-        // Build command array - no shell interpolation, pass args directly
-        val commandArray = if (workdir != filesDir.absolutePath) {
-            // Use cd command with proper quoting, then exec to replace shell process
-            arrayOf(command, "-c", "cd ${workdir.replace("\"", "\\\"")} && exec \"$command\" ${args.joinToString(" ") { "\"${it.replace("\"", "\\\"")}\"" }}")
-        } else {
-            arrayOf(command) + args
-        }
+        // Build environment array
+        val environment = mutableListOf<String>()
+        environment.add("PATH=${System.getenv("PATH") ?: "/system/bin"}")
+        environment.add("HOME=${filesDir.absolutePath}")
+        environment.add("TMPDIR=${cacheDir.absolutePath}")
+        environment.add("TERM=xterm-256color")
+        environment.addAll(env)
         
-        // Build environment map
-        val environment = mutableMapOf<String, String>()
-        environment["PATH"] = System.getenv("PATH") ?: "/system/bin"
-        environment["HOME"] = filesDir.absolutePath
-        environment["TMPDIR"] = cacheDir.absolutePath
-        environment["TERM"] = "xterm-256color"
-        
-        // Add custom environment variables
-        env.forEach { envVar ->
-            val parts = envVar.split("=", limit = 2)
-            if (parts.size == 2) {
-                environment[parts[0]] = parts[1]
+        createTerminalSession(command, args, environment.toTypedArray(), workdir)
+    }
+    
+    private fun createTerminalSession(shellPath: String, args: Array<String>, environment: Array<String>, cwd: String) {
+        val sessionClient = object : TerminalSessionClient {
+            override fun onTextChanged(changedSession: TerminalSession) {
+                terminalView.onScreenUpdated()
+            }
+            
+            override fun onTitleChanged(changedSession: TerminalSession) {
+                // Update title if needed
+            }
+            
+            override fun setTerminalShellPid(session: TerminalSession, pid: Int) {
+                // Store shell PID if needed
+            }
+            
+            override fun onSessionFinished(finishedSession: TerminalSession) {
+                runOnUiThread {
+                    AlertDialog.Builder(this@TerminalActivity)
+                        .setTitle("Session Ended")
+                        .setMessage("The terminal session has ended.")
+                        .setPositiveButton("OK") { _, _ ->
+                            finish()
+                        }
+                        .show()
+                }
+            }
+            
+            override fun onCopyTextToClipboard(session: TerminalSession, text: String?) {
+                // Handle clipboard
+                text?.let {
+                    val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("Terminal", it)
+                    clipboard.setPrimaryClip(clip)
+                }
+            }
+            
+            override fun onPasteTextFromClipboard(session: TerminalSession?) {
+                // Handle paste
+                val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.primaryClip?.let { clip ->
+                    if (clip.itemCount > 0) {
+                        val text = clip.getItemAt(0).text?.toString()
+                        text?.let { terminalSession?.write(it) }
+                    }
+                }
+            }
+            
+            override fun onBell(session: TerminalSession) {
+                // Handle bell sound/vibration
+            }
+            
+            override fun onColorsChanged(session: TerminalSession) {
+                terminalView.onScreenUpdated()
+            }
+            
+            override fun onTerminalCursorStateChange(state: Boolean) {
+                // Handle cursor state
+            }
+            
+            override fun getTerminalCursorStyle(): Int {
+                return com.termux.terminal.TerminalEmulator.TERMINAL_CURSOR_STYLE_BLOCK
+            }
+            
+            override fun logError(tag: String?, message: String?) {
+                android.util.Log.e(tag ?: "Terminal", message ?: "")
+            }
+            
+            override fun logWarn(tag: String?, message: String?) {
+                android.util.Log.w(tag ?: "Terminal", message ?: "")
+            }
+            
+            override fun logInfo(tag: String?, message: String?) {
+                android.util.Log.i(tag ?: "Terminal", message ?: "")
+            }
+            
+            override fun logDebug(tag: String?, message: String?) {
+                android.util.Log.d(tag ?: "Terminal", message ?: "")
+            }
+            
+            override fun logVerbose(tag: String?, message: String?) {
+                android.util.Log.v(tag ?: "Terminal", message ?: "")
+            }
+            
+            override fun logStackTraceWithMessage(tag: String?, message: String?, e: Exception?) {
+                android.util.Log.e(tag ?: "Terminal", message ?: "", e)
+            }
+            
+            override fun logStackTrace(tag: String?, e: Exception?) {
+                android.util.Log.e(tag ?: "Terminal", "", e)
             }
         }
         
-        // Start terminal session
-        terminalView.startSession(commandArray, environment)
+        terminalSession = TerminalSession(
+            shellPath,
+            cwd,
+            args,
+            environment,
+            com.termux.terminal.TerminalEmulator.DEFAULT_TERMINAL_TRANSCRIPT_ROWS,
+            sessionClient
+        )
         
-        // Request focus
-        terminalView.requestFocus()
-    }
-    
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (terminalView.onKeyDown(keyCode, event)) {
-            return true
+        // Post to ensure TerminalView layout is complete before attaching session
+        terminalView.post {
+            terminalView.attachSession(terminalSession)
+            terminalView.requestFocus()
         }
-        return super.onKeyDown(keyCode, event)
     }
     
     override fun onDestroy() {
         super.onDestroy()
-        terminalView.cleanup()
+        terminalSession?.finishIfRunning()
     }
 }

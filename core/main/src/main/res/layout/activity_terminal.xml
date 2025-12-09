@@ -11,7 +11,7 @@
         android:orientation="vertical">
 
         <!-- Terminal View -->
-        <com.rk.terminal.TerminalView
+        <com.termux.view.TerminalView
             android:id="@+id/terminal_view"
             android:layout_width="match_parent"
             android:layout_height="0dp"

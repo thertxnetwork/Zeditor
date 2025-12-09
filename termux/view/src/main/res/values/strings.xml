@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Strings referenced by termux view text selection -->
+    <string name="copy">Copy</string>
+    <string name="terminal_more">More</string>
+    <string name="paste">Paste</string>
+    <string name="select_all">Select All</string>
+</resources>
