@@ -248,10 +248,6 @@ class UbuntuBootstrap(private val context: Context) {
         // Create .bashrc for root user
         val rootHome = File(rootfsPath, "root")
         rootHome.mkdirs()
-        // Ensure root directory has proper permissions
-        rootHome.setReadable(true, false)
-        rootHome.setWritable(true, false)
-        rootHome.setExecutable(true, false)
         
         File(rootHome, ".bashrc").writeText("""
             # Ubuntu environment
