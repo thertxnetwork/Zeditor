@@ -122,7 +122,7 @@
         android:layout_margin="16dp"
         android:src="@android:drawable/ic_menu_preferences"
         android:contentDescription="Toggle Extra Keys"
-        android:backgroundTint="#00FF00"
-        android:tint="#000000" />
+        android:backgroundTint="#424242"
+        android:tint="#FFFFFF" />
 
 </FrameLayout>

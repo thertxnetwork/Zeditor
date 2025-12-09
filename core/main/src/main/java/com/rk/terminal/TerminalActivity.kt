@@ -341,6 +341,33 @@ class TerminalActivity : AppCompatActivity() {
     }
     
     private fun setupToggleExtraKeysFab() {
+        // Make FAB draggable with click support
+        toggleExtraKeysFab.setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    dX = view.x - event.rawX
+                    dY = view.y - event.rawY
+                    lastAction = MotionEvent.ACTION_DOWN
+                    false // Return false to allow click event to be processed
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    view.x = event.rawX + dX
+                    view.y = event.rawY + dY
+                    lastAction = MotionEvent.ACTION_MOVE
+                    true // Consume move event
+                }
+                MotionEvent.ACTION_UP -> {
+                    // If it was a drag (not just a tap), consume the event
+                    if (lastAction == MotionEvent.ACTION_MOVE) {
+                        true // Consume to prevent click after drag
+                    } else {
+                        false // Allow click to be processed
+                    }
+                }
+                else -> false
+            }
+        }
+        
         // Toggle extra keys visibility on click
         toggleExtraKeysFab.setOnClickListener {
             if (extraKeysView.visibility == View.VISIBLE) {
@@ -348,29 +375,6 @@ class TerminalActivity : AppCompatActivity() {
             } else {
                 extraKeysView.visibility = View.VISIBLE
             }
-        }
-        
-        // Make FAB draggable
-        toggleExtraKeysFab.setOnTouchListener { view, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    dX = view.x - event.rawX
-                    dY = view.y - event.rawY
-                    lastAction = MotionEvent.ACTION_DOWN
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    view.x = event.rawX + dX
-                    view.y = event.rawY + dY
-                    lastAction = MotionEvent.ACTION_MOVE
-                }
-                MotionEvent.ACTION_UP -> {
-                    // If it was just a tap (not a drag), perform click
-                    if (lastAction == MotionEvent.ACTION_DOWN) {
-                        view.performClick()
-                    }
-                }
-            }
-            true
         }
     }
     
