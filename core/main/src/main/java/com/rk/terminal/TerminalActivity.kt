@@ -40,6 +40,7 @@ class TerminalActivity : AppCompatActivity() {
     private lateinit var bootstrap: UbuntuBootstrap
     private var isUbuntuMode = false
     private var terminalSession: TerminalSession? = null
+    private var terminalExtraKeys: TerminalExtraKeys? = null
     
     companion object {
         const val EXTRA_COMMAND = "command"
@@ -48,6 +49,16 @@ class TerminalActivity : AppCompatActivity() {
         const val EXTRA_ENV = "env"
         const val EXTRA_TITLE = "title"
         const val EXTRA_UBUNTU_MODE = "ubuntu_mode"
+        
+        // Default extra keys configuration for the terminal
+        // Two rows: top row has ESC, TAB, CTRL, ALT, special chars, and navigation
+        // bottom row has SHIFT, more navigation, and function keys
+        private const val DEFAULT_EXTRA_KEYS = """
+            [
+              ["ESC", "TAB", "CTRL", "ALT", "-", "DOWN", "UP", "/"],
+              ["SHIFT", "LEFT", "RIGHT", "HOME", "END", "PGUP", "PGDN", "KEYBOARD"]
+            ]
+        """
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -265,28 +276,20 @@ class TerminalActivity : AppCompatActivity() {
     
     private fun setupExtraKeys() {
         try {
-            // Define a comprehensive set of extra keys similar to Termux default
-            // Two rows: top row has ESC, TAB, CTRL, ALT, special chars, and navigation
-            // bottom row has more special characters and function keys
-            val extraKeysInfo = """
-            [
-              ["ESC", "TAB", "CTRL", "ALT", "-", "DOWN", "UP", "/"],
-              ["SHIFT", "LEFT", "RIGHT", "HOME", "END", "PGUP", "PGDN", "KEYBOARD"]
-            ]
-            """
-            
             val extraKeysInfoObj = ExtraKeysInfo(
-                extraKeysInfo,
+                DEFAULT_EXTRA_KEYS,
                 ExtraKeysConstants.EXTRA_KEY_DISPLAY_MAPS.DEFAULT_CHAR_DISPLAY,
                 ExtraKeysConstants.CONTROL_CHARS_ALIASES
             )
+            
+            // Create the TerminalExtraKeys instance once
+            terminalExtraKeys = TerminalExtraKeys(terminalView)
             
             // Setup the extra keys view client
             extraKeysView.setExtraKeysViewClient(object : ExtraKeysView.IExtraKeysView {
                 override fun onExtraKeyButtonClick(view: View, buttonInfo: ExtraKeyButton, button: MaterialButton) {
                     // Delegate to TerminalExtraKeys for proper key handling
-                    val terminalExtraKeys = TerminalExtraKeys(terminalView)
-                    terminalExtraKeys.onExtraKeyButtonClick(view, buttonInfo, button)
+                    terminalExtraKeys?.onExtraKeyButtonClick(view, buttonInfo, button)
                 }
                 
                 override fun performExtraKeyButtonHapticFeedback(view: View, buttonInfo: ExtraKeyButton, button: MaterialButton): Boolean {
