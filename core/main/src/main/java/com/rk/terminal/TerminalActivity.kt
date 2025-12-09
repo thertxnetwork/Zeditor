@@ -12,6 +12,12 @@ import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.button.MaterialButton
+import com.termux.shared.termux.extrakeys.ExtraKeyButton
+import com.termux.shared.termux.extrakeys.ExtraKeysConstants
+import com.termux.shared.termux.extrakeys.ExtraKeysInfo
+import com.termux.shared.termux.extrakeys.ExtraKeysView
+import com.termux.shared.termux.terminal.io.TerminalExtraKeys
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
@@ -23,8 +29,10 @@ import java.io.File
 class TerminalActivity : AppCompatActivity() {
     
     private lateinit var terminalView: TerminalView
+    private lateinit var extraKeysView: ExtraKeysView
     private lateinit var inputField: EditText
     private lateinit var sendButton: ImageButton
+    private lateinit var inputLayout: View
     private lateinit var progressBar: ProgressBar
     private lateinit var progressText: TextView
     private lateinit var progressLayout: View
@@ -48,8 +56,10 @@ class TerminalActivity : AppCompatActivity() {
         
         // Initialize views
         terminalView = findViewById(R.id.terminal_view)
+        extraKeysView = findViewById(R.id.extra_keys)
         inputField = findViewById(R.id.input_field)
         sendButton = findViewById(R.id.send_button)
+        inputLayout = findViewById(R.id.input_layout)
         progressBar = findViewById(R.id.progress_bar)
         progressText = findViewById(R.id.progress_text)
         progressLayout = findViewById(R.id.progress_layout)
@@ -157,6 +167,9 @@ class TerminalActivity : AppCompatActivity() {
             }
         })
         
+        // Setup extra keys view with default Termux-like keys
+        setupExtraKeys()
+        
         // Setup input handling
         setupInputHandling()
         
@@ -198,8 +211,8 @@ class TerminalActivity : AppCompatActivity() {
     private fun installUbuntu() {
         progressLayout.visibility = View.VISIBLE
         terminalView.visibility = View.GONE
-        inputField.visibility = View.GONE
-        sendButton.visibility = View.GONE
+        extraKeysView.visibility = View.GONE
+        inputLayout.visibility = View.GONE
         
         lifecycleScope.launch {
             val result = bootstrap.install { message, progress ->
@@ -213,8 +226,9 @@ class TerminalActivity : AppCompatActivity() {
                 runOnUiThread {
                     progressLayout.visibility = View.GONE
                     terminalView.visibility = View.VISIBLE
-                    inputField.visibility = View.VISIBLE
-                    sendButton.visibility = View.VISIBLE
+                    extraKeysView.visibility = View.VISIBLE
+                    // Keep input layout hidden - using extra keys instead
+                    inputLayout.visibility = View.GONE
                     startUbuntuSession()
                 }
             }.onFailure { error ->
@@ -247,6 +261,46 @@ class TerminalActivity : AppCompatActivity() {
         val env = environment // Already in "KEY=VALUE" format from getEnvironment()
         
         createTerminalSession(shellPath, args, env, bootstrap.rootfsPath.absolutePath)
+    }
+    
+    private fun setupExtraKeys() {
+        try {
+            // Define a comprehensive set of extra keys similar to Termux default
+            // Two rows: top row has ESC, TAB, CTRL, ALT, special chars, and navigation
+            // bottom row has more special characters and function keys
+            val extraKeysInfo = """
+            [
+              ["ESC", "TAB", "CTRL", "ALT", "-", "DOWN", "UP", "/"],
+              ["SHIFT", "LEFT", "RIGHT", "HOME", "END", "PGUP", "PGDN", "KEYBOARD"]
+            ]
+            """
+            
+            val extraKeysInfoObj = ExtraKeysInfo(
+                extraKeysInfo,
+                ExtraKeysConstants.EXTRA_KEY_DISPLAY_MAPS.DEFAULT_CHAR_DISPLAY,
+                ExtraKeysConstants.CONTROL_CHARS_ALIASES
+            )
+            
+            // Setup the extra keys view client
+            extraKeysView.setExtraKeysViewClient(object : ExtraKeysView.IExtraKeysView {
+                override fun onExtraKeyButtonClick(view: View, buttonInfo: ExtraKeyButton, button: MaterialButton) {
+                    // Delegate to TerminalExtraKeys for proper key handling
+                    val terminalExtraKeys = TerminalExtraKeys(terminalView)
+                    terminalExtraKeys.onExtraKeyButtonClick(view, buttonInfo, button)
+                }
+                
+                override fun performExtraKeyButtonHapticFeedback(view: View, buttonInfo: ExtraKeyButton, button: MaterialButton): Boolean {
+                    // Provide haptic feedback on key press
+                    button.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                    return true
+                }
+            })
+            
+            // Load the extra keys
+            extraKeysView.reload(extraKeysInfoObj, 1.0f)
+        } catch (e: Exception) {
+            android.util.Log.e("TerminalActivity", "Failed to setup extra keys", e)
+        }
     }
     
     private fun setupInputHandling() {
@@ -326,13 +380,19 @@ class TerminalActivity : AppCompatActivity() {
             
             override fun onSessionFinished(finishedSession: TerminalSession) {
                 runOnUiThread {
-                    AlertDialog.Builder(this@TerminalActivity)
-                        .setTitle("Session Ended")
-                        .setMessage("The terminal session has ended.")
-                        .setPositiveButton("OK") { _, _ ->
-                            finish()
-                        }
-                        .show()
+                    // Check if activity is still valid before showing dialog
+                    if (!isFinishing && !isDestroyed) {
+                        AlertDialog.Builder(this@TerminalActivity)
+                            .setTitle("Session Ended")
+                            .setMessage("The terminal session has ended.")
+                            .setPositiveButton("OK") { _, _ ->
+                                finish()
+                            }
+                            .show()
+                    } else {
+                        // Activity is not valid, just finish it
+                        finish()
+                    }
                 }
             }
             
