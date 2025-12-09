@@ -12,11 +12,15 @@ import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import com.google.android.material.button.MaterialButton
 import com.termux.shared.termux.extrakeys.ExtraKeyButton
 import com.termux.shared.termux.extrakeys.ExtraKeysConstants
 import com.termux.shared.termux.extrakeys.ExtraKeysInfo
 import com.termux.shared.termux.extrakeys.ExtraKeysView
+import com.termux.shared.termux.extrakeys.SpecialButton
 import com.termux.shared.termux.terminal.io.TerminalExtraKeys
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
@@ -25,6 +29,8 @@ import com.termux.view.TerminalViewClient
 import com.thertxnetwork.zeditor.core.main.R
 import kotlinx.coroutines.launch
 import java.io.File
+import kotlin.math.max
+import kotlin.math.min
 
 class TerminalActivity : AppCompatActivity() {
     
@@ -41,6 +47,11 @@ class TerminalActivity : AppCompatActivity() {
     private var isUbuntuMode = false
     private var terminalSession: TerminalSession? = null
     private var terminalExtraKeys: TerminalExtraKeys? = null
+    
+    // Terminal text size and scale
+    private var mTerminalTextSize = 14f
+    private val MIN_FONTSIZE = 8f
+    private val MAX_FONTSIZE = 32f
     
     companion object {
         const val EXTRA_COMMAND = "command"
@@ -85,12 +96,15 @@ class TerminalActivity : AppCompatActivity() {
         // Setup terminal view client
         terminalView.setTerminalViewClient(object : TerminalViewClient {
             override fun onScale(scale: Float): Float {
-                return scale
+                // Clamp the scale to reasonable limits
+                mTerminalTextSize = max(MIN_FONTSIZE, min(scale, MAX_FONTSIZE))
+                terminalView.setTextSize(mTerminalTextSize.toInt())
+                return mTerminalTextSize
             }
             
             override fun onSingleTapUp(e: android.view.MotionEvent?) {
-                // Show keyboard
-                inputField.requestFocus()
+                // Show soft keyboard when terminal is tapped
+                terminalView.requestFocus()
             }
             
             override fun shouldBackButtonBeMappedToEscape(): Boolean {
@@ -122,23 +136,29 @@ class TerminalActivity : AppCompatActivity() {
             }
             
             override fun onLongPress(event: android.view.MotionEvent?): Boolean {
-                return false
+                // Show context menu for copy/paste on long press
+                showTextActionMenu()
+                return true
             }
             
             override fun readControlKey(): Boolean {
-                return false
+                // Read CTRL state from ExtraKeysView
+                return extraKeysView.readSpecialButton(SpecialButton.CTRL, false) ?: false
             }
             
             override fun readAltKey(): Boolean {
-                return false
+                // Read ALT state from ExtraKeysView
+                return extraKeysView.readSpecialButton(SpecialButton.ALT, false) ?: false
             }
             
             override fun readShiftKey(): Boolean {
-                return false
+                // Read SHIFT state from ExtraKeysView
+                return extraKeysView.readSpecialButton(SpecialButton.SHIFT, false) ?: false
             }
             
             override fun readFnKey(): Boolean {
-                return false
+                // Read FN state from ExtraKeysView
+                return extraKeysView.readSpecialButton(SpecialButton.FN, false) ?: false
             }
             
             override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession?): Boolean {
@@ -304,6 +324,49 @@ class TerminalActivity : AppCompatActivity() {
         } catch (e: Exception) {
             android.util.Log.e("TerminalActivity", "Failed to setup extra keys", e)
         }
+    }
+    
+    private fun showTextActionMenu() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val hasClipboard = clipboard.hasPrimaryClip()
+        
+        AlertDialog.Builder(this)
+            .setTitle("Text Actions")
+            .setItems(if (hasClipboard) arrayOf("Copy", "Paste", "Select All") else arrayOf("Copy", "Select All")) { _, which ->
+                when (which) {
+                    0 -> {
+                        // Copy - select all text from terminal
+                        terminalSession?.let { session ->
+                            val text = session.emulator.screen.selectedText
+                            if (!text.isNullOrEmpty()) {
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Terminal", text))
+                                android.widget.Toast.makeText(this, "Text copied", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                android.widget.Toast.makeText(this, "No text selected", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    1 -> {
+                        if (hasClipboard) {
+                            // Paste
+                            clipboard.primaryClip?.let { clip ->
+                                if (clip.itemCount > 0) {
+                                    val text = clip.getItemAt(0).text?.toString()
+                                    text?.let { terminalSession?.write(it) }
+                                }
+                            }
+                        } else {
+                            // Select All (when no clipboard)
+                            terminalSession?.emulator?.selectAll()
+                        }
+                    }
+                    2 -> {
+                        // Select All
+                        terminalSession?.emulator?.selectAll()
+                    }
+                }
+            }
+            .show()
     }
     
     private fun setupInputHandling() {
