@@ -198,9 +198,6 @@ class TerminalActivity : AppCompatActivity() {
             }
         })
         
-        // Setup extra keys view with default Termux-like keys
-        setupExtraKeys()
-        
         // Setup input handling
         setupInputHandling()
         
@@ -537,6 +534,9 @@ class TerminalActivity : AppCompatActivity() {
         terminalView.post {
             terminalView.attachSession(terminalSession)
             terminalView.requestFocus()
+            
+            // Setup extra keys after terminal session is attached
+            setupExtraKeys()
         }
     }
     

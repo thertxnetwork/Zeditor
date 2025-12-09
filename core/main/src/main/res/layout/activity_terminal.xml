@@ -25,7 +25,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:background="#1A1A1A" />
+            android:background="#1A1A1A"
+            android:visibility="visible" />
         
         <!-- Input Area -->
         <LinearLayout
