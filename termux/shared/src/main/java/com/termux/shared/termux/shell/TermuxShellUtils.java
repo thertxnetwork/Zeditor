@@ -3,7 +3,7 @@ package com.termux.shared.termux.shell;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.itsaky.androidide.utils.Environment;
+import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.errors.Error;
 import com.termux.shared.file.filesystem.FileTypes;
 import com.termux.shared.shell.command.environment.UnixShellEnvironment;
@@ -28,7 +28,7 @@ public class TermuxShellUtils {
 
     public static boolean shellExists(boolean failsafe) {
         for (String shellBinary : UnixShellEnvironment.LOGIN_SHELL_BINARIES) {
-            File shellFile = new File(Environment.BIN_DIR, shellBinary);
+            File shellFile = new File(TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH, shellBinary);
             if (shellFile.canExecute()) {
                 return true;
             }

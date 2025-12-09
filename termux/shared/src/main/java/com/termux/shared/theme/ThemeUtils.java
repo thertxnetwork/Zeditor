@@ -2,11 +2,10 @@ package com.termux.shared.theme;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.content.res.TypedArray;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
-import com.itsaky.androidide.preferences.internal.GeneralPreferences;
-import com.itsaky.androidide.utils.ResourceUtilsKt;
 
 public class ThemeUtils {
 
@@ -23,7 +22,8 @@ public class ThemeUtils {
     if (context == null) {
       return false;
     }
-    return ResourceUtilsKt.isSystemInDarkMode(context);
+    int nightMode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+    return nightMode == Configuration.UI_MODE_NIGHT_YES;
   }
 
   /**
@@ -31,8 +31,9 @@ public class ThemeUtils {
    * is set to {@link NightMode#SYSTEM} and night mode is enabled by system.
    */
   public static boolean shouldEnableDarkTheme(Context context, String name) {
-    return GeneralPreferences.INSTANCE.getUiMode() == AppCompatDelegate.getDefaultNightMode()
-        || isNightModeEnabled(context);
+    int nightMode = AppCompatDelegate.getDefaultNightMode();
+    return nightMode == AppCompatDelegate.MODE_NIGHT_YES
+        || (nightMode == AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM && isNightModeEnabled(context));
   }
 
 

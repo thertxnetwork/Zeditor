@@ -7,7 +7,8 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.termux.am.Am;
+// Note: termux-am-library (com.termux.am.Am) is required for am command support
+// This functionality is optional and will be disabled if library is not available
 import com.termux.shared.R;
 import com.termux.shared.android.PackageUtils;
 import com.termux.shared.android.PermissionUtils;
@@ -223,7 +224,8 @@ public class AmSocketServer {
                     PackageUtils.getAppNameForPackage(context)));
             }
 
-            new Am(stdoutPrintStream, stderrPrintStream, (Application) context.getApplicationContext()).run(amCommandArray);
+            // termux-am-library is not available - am commands not supported
+            throw new UnsupportedOperationException("termux-am-library not available");
 
             // Set stdout to value set by am command in stdoutPrintStream
             stdoutPrintStream.flush();

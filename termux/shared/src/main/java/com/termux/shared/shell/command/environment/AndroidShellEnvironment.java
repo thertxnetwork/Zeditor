@@ -4,7 +4,7 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
-import com.itsaky.androidide.utils.Environment;
+import android.os.Build;
 import com.termux.shared.shell.command.ExecutionCommand;
 
 import java.io.File;
@@ -33,7 +33,8 @@ public class AndroidShellEnvironment extends UnixShellEnvironment {
     public HashMap<String, String> getEnvironment(@NonNull Context currentPackageContext, boolean isFailSafe) {
         HashMap<String, String> environment = new HashMap<>();
 
-        Environment.putEnvironment(environment, isFailSafe);
+        // Add basic Android environment variables
+        putAndroidEnvironment(environment);
 
         environment.put(ENV_HOME, "/");
         environment.put(ENV_LANG, "en_US.UTF-8");
@@ -67,7 +68,11 @@ public class AndroidShellEnvironment extends UnixShellEnvironment {
         return environment;
     }
 
-
+    /** Add Android-specific environment variables */
+    private static void putAndroidEnvironment(@NonNull HashMap<String, String> environment) {
+        environment.put("ANDROID_SDK_INT", String.valueOf(Build.VERSION.SDK_INT));
+        environment.put("ANDROID_SDK_VERSION", Build.VERSION.RELEASE);
+    }
 
     @NonNull
     @Override

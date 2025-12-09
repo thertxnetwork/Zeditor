@@ -16,8 +16,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.itsaky.androidide.window.WindowManager;
-import com.itsaky.androidide.window.WindowMetrics;
+import android.view.WindowManager;
+import android.view.WindowMetrics;
 import com.termux.shared.logger.Logger;
 
 public class ViewUtils {
@@ -187,13 +187,24 @@ public class ViewUtils {
     public static Point getDisplaySize( @NonNull Context context, boolean activitySize) {
         // android.view.WindowManager.getDefaultDisplay() and Display.getSize() are deprecated in
         // API 30 and give wrong values in API 30 for activitySize=false in multi-window
-        WindowManager windowManager = new WindowManager(context);
-        WindowMetrics windowMetrics;
-        if (activitySize)
-            windowMetrics = windowManager.getCurrentWindowMetrics();
-        else
-            windowMetrics = windowManager.getMaximumWindowMetrics();
-        return new Point(windowMetrics.getBounds().width(), windowMetrics.getBounds().height());
+        WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        if (windowManager == null) {
+            return new Point(0, 0);
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowMetrics windowMetrics;
+            if (activitySize)
+                windowMetrics = windowManager.getCurrentWindowMetrics();
+            else
+                windowMetrics = windowManager.getMaximumWindowMetrics();
+            return new Point(windowMetrics.getBounds().width(), windowMetrics.getBounds().height());
+        } else {
+            android.view.Display display = windowManager.getDefaultDisplay();
+            Point size = new Point();
+            display.getSize(size);
+            return size;
+        }
     }
 
     /** Convert {@link Rect} to {@link String}. */
