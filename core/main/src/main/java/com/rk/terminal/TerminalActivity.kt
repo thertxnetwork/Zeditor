@@ -330,39 +330,36 @@ class TerminalActivity : AppCompatActivity() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val hasClipboard = clipboard.hasPrimaryClip()
         
+        val options = if (hasClipboard) {
+            arrayOf("Copy All", "Paste")
+        } else {
+            arrayOf("Copy All")
+        }
+        
         AlertDialog.Builder(this)
             .setTitle("Text Actions")
-            .setItems(if (hasClipboard) arrayOf("Copy", "Paste", "Select All") else arrayOf("Copy", "Select All")) { _, which ->
+            .setItems(options) { _, which ->
                 when (which) {
                     0 -> {
-                        // Copy - select all text from terminal
+                        // Copy all text from terminal
                         terminalSession?.let { session ->
-                            val text = session.emulator.screen.selectedText
-                            if (!text.isNullOrEmpty()) {
+                            val text = session.emulator.screen.transcriptText
+                            if (text.isNotEmpty()) {
                                 clipboard.setPrimaryClip(ClipData.newPlainText("Terminal", text))
                                 android.widget.Toast.makeText(this, "Text copied", android.widget.Toast.LENGTH_SHORT).show()
                             } else {
-                                android.widget.Toast.makeText(this, "No text selected", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(this, "No text to copy", android.widget.Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
                     1 -> {
-                        if (hasClipboard) {
-                            // Paste
-                            clipboard.primaryClip?.let { clip ->
-                                if (clip.itemCount > 0) {
-                                    val text = clip.getItemAt(0).text?.toString()
-                                    text?.let { terminalSession?.write(it) }
-                                }
+                        // Paste
+                        clipboard.primaryClip?.let { clip ->
+                            if (clip.itemCount > 0) {
+                                val text = clip.getItemAt(0).text?.toString()
+                                text?.let { terminalSession?.write(it) }
                             }
-                        } else {
-                            // Select All (when no clipboard)
-                            terminalSession?.emulator?.selectAll()
                         }
-                    }
-                    2 -> {
-                        // Select All
-                        terminalSession?.emulator?.selectAll()
                     }
                 }
             }
