@@ -12,6 +12,16 @@ import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import com.google.android.material.button.MaterialButton
+import com.termux.shared.termux.extrakeys.ExtraKeyButton
+import com.termux.shared.termux.extrakeys.ExtraKeysConstants
+import com.termux.shared.termux.extrakeys.ExtraKeysInfo
+import com.termux.shared.termux.extrakeys.ExtraKeysView
+import com.termux.shared.termux.extrakeys.SpecialButton
+import com.termux.shared.termux.terminal.io.TerminalExtraKeys
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
@@ -19,12 +29,16 @@ import com.termux.view.TerminalViewClient
 import com.thertxnetwork.zeditor.core.main.R
 import kotlinx.coroutines.launch
 import java.io.File
+import kotlin.math.max
+import kotlin.math.min
 
 class TerminalActivity : AppCompatActivity() {
     
     private lateinit var terminalView: TerminalView
+    private lateinit var extraKeysView: ExtraKeysView
     private lateinit var inputField: EditText
     private lateinit var sendButton: ImageButton
+    private lateinit var inputLayout: View
     private lateinit var progressBar: ProgressBar
     private lateinit var progressText: TextView
     private lateinit var progressLayout: View
@@ -32,6 +46,12 @@ class TerminalActivity : AppCompatActivity() {
     private lateinit var bootstrap: UbuntuBootstrap
     private var isUbuntuMode = false
     private var terminalSession: TerminalSession? = null
+    private var terminalExtraKeys: TerminalExtraKeys? = null
+    
+    // Terminal text size and scale
+    private var mTerminalTextSize = 14f
+    private val MIN_FONTSIZE = 8f
+    private val MAX_FONTSIZE = 32f
     
     companion object {
         const val EXTRA_COMMAND = "command"
@@ -40,6 +60,16 @@ class TerminalActivity : AppCompatActivity() {
         const val EXTRA_ENV = "env"
         const val EXTRA_TITLE = "title"
         const val EXTRA_UBUNTU_MODE = "ubuntu_mode"
+        
+        // Default extra keys configuration for the terminal
+        // Two rows: top row has ESC, TAB, CTRL, ALT, special chars, and navigation
+        // bottom row has SHIFT, more navigation, PASTE, and function keys
+        private const val DEFAULT_EXTRA_KEYS = """
+            [
+              ["ESC", "/", "-", "HOME", "UP", "END", "PGUP", "DEL"],
+              ["TAB", "CTRL", "ALT", "SHIFT", "LEFT", "DOWN", "RIGHT", "PGDN"]
+            ]
+        """
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,8 +78,10 @@ class TerminalActivity : AppCompatActivity() {
         
         // Initialize views
         terminalView = findViewById(R.id.terminal_view)
+        extraKeysView = findViewById(R.id.extra_keys)
         inputField = findViewById(R.id.input_field)
         sendButton = findViewById(R.id.send_button)
+        inputLayout = findViewById(R.id.input_layout)
         progressBar = findViewById(R.id.progress_bar)
         progressText = findViewById(R.id.progress_text)
         progressLayout = findViewById(R.id.progress_layout)
@@ -64,12 +96,15 @@ class TerminalActivity : AppCompatActivity() {
         // Setup terminal view client
         terminalView.setTerminalViewClient(object : TerminalViewClient {
             override fun onScale(scale: Float): Float {
-                return scale
+                // Clamp the scale to reasonable limits
+                mTerminalTextSize = max(MIN_FONTSIZE, min(scale, MAX_FONTSIZE))
+                terminalView.setTextSize(mTerminalTextSize.toInt())
+                return mTerminalTextSize
             }
             
             override fun onSingleTapUp(e: android.view.MotionEvent?) {
-                // Show keyboard
-                inputField.requestFocus()
+                // Show soft keyboard when terminal is tapped
+                terminalView.requestFocus()
             }
             
             override fun shouldBackButtonBeMappedToEscape(): Boolean {
@@ -101,23 +136,29 @@ class TerminalActivity : AppCompatActivity() {
             }
             
             override fun onLongPress(event: android.view.MotionEvent?): Boolean {
-                return false
+                // Show context menu for copy/paste on long press
+                showTextActionMenu()
+                return true
             }
             
             override fun readControlKey(): Boolean {
-                return false
+                // Read CTRL state from ExtraKeysView
+                return extraKeysView.readSpecialButton(SpecialButton.CTRL, false) ?: false
             }
             
             override fun readAltKey(): Boolean {
-                return false
+                // Read ALT state from ExtraKeysView
+                return extraKeysView.readSpecialButton(SpecialButton.ALT, false) ?: false
             }
             
             override fun readShiftKey(): Boolean {
-                return false
+                // Read SHIFT state from ExtraKeysView
+                return extraKeysView.readSpecialButton(SpecialButton.SHIFT, false) ?: false
             }
             
             override fun readFnKey(): Boolean {
-                return false
+                // Read FN state from ExtraKeysView
+                return extraKeysView.readSpecialButton(SpecialButton.FN, false) ?: false
             }
             
             override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession?): Boolean {
@@ -198,8 +239,8 @@ class TerminalActivity : AppCompatActivity() {
     private fun installUbuntu() {
         progressLayout.visibility = View.VISIBLE
         terminalView.visibility = View.GONE
-        inputField.visibility = View.GONE
-        sendButton.visibility = View.GONE
+        extraKeysView.visibility = View.GONE
+        inputLayout.visibility = View.GONE
         
         lifecycleScope.launch {
             val result = bootstrap.install { message, progress ->
@@ -213,8 +254,9 @@ class TerminalActivity : AppCompatActivity() {
                 runOnUiThread {
                     progressLayout.visibility = View.GONE
                     terminalView.visibility = View.VISIBLE
-                    inputField.visibility = View.VISIBLE
-                    sendButton.visibility = View.VISIBLE
+                    extraKeysView.visibility = View.VISIBLE
+                    // Keep input layout hidden - using extra keys instead
+                    inputLayout.visibility = View.GONE
                     startUbuntuSession()
                 }
             }.onFailure { error ->
@@ -247,6 +289,78 @@ class TerminalActivity : AppCompatActivity() {
         val env = environment // Already in "KEY=VALUE" format from getEnvironment()
         
         createTerminalSession(shellPath, args, env, bootstrap.rootfsPath.absolutePath)
+    }
+    
+    private fun setupExtraKeys() {
+        try {
+            val extraKeysInfoObj = ExtraKeysInfo(
+                DEFAULT_EXTRA_KEYS,
+                ExtraKeysConstants.EXTRA_KEY_DISPLAY_MAPS.DEFAULT_CHAR_DISPLAY,
+                ExtraKeysConstants.CONTROL_CHARS_ALIASES
+            )
+            
+            // Create the TerminalExtraKeys instance once
+            terminalExtraKeys = TerminalExtraKeys(terminalView)
+            
+            // Setup the extra keys view client
+            extraKeysView.setExtraKeysViewClient(object : ExtraKeysView.IExtraKeysView {
+                override fun onExtraKeyButtonClick(view: View, buttonInfo: ExtraKeyButton, button: MaterialButton) {
+                    // Delegate to TerminalExtraKeys for proper key handling
+                    terminalExtraKeys?.onExtraKeyButtonClick(view, buttonInfo, button)
+                }
+                
+                override fun performExtraKeyButtonHapticFeedback(view: View, buttonInfo: ExtraKeyButton, button: MaterialButton): Boolean {
+                    // Provide haptic feedback on key press
+                    button.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                    return true
+                }
+            })
+            
+            // Load the extra keys
+            extraKeysView.reload(extraKeysInfoObj, 1.0f)
+        } catch (e: Exception) {
+            android.util.Log.e("TerminalActivity", "Failed to setup extra keys", e)
+        }
+    }
+    
+    private fun showTextActionMenu() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val hasClipboard = clipboard.hasPrimaryClip()
+        
+        val options = if (hasClipboard) {
+            arrayOf("Copy All", "Paste")
+        } else {
+            arrayOf("Copy All")
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Text Actions")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        // Copy all text from terminal
+                        terminalSession?.let { session ->
+                            val text = session.emulator.screen.transcriptText
+                            if (text.isNotEmpty()) {
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Terminal", text))
+                                android.widget.Toast.makeText(this, "Text copied", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                android.widget.Toast.makeText(this, "No text to copy", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    1 -> {
+                        // Paste
+                        clipboard.primaryClip?.let { clip ->
+                            if (clip.itemCount > 0) {
+                                val text = clip.getItemAt(0).text?.toString()
+                                text?.let { terminalSession?.write(it) }
+                            }
+                        }
+                    }
+                }
+            }
+            .show()
     }
     
     private fun setupInputHandling() {
@@ -326,13 +440,19 @@ class TerminalActivity : AppCompatActivity() {
             
             override fun onSessionFinished(finishedSession: TerminalSession) {
                 runOnUiThread {
-                    AlertDialog.Builder(this@TerminalActivity)
-                        .setTitle("Session Ended")
-                        .setMessage("The terminal session has ended.")
-                        .setPositiveButton("OK") { _, _ ->
-                            finish()
-                        }
-                        .show()
+                    // Check if activity is still valid before showing dialog
+                    if (!isFinishing && !isDestroyed) {
+                        AlertDialog.Builder(this@TerminalActivity)
+                            .setTitle("Session Ended")
+                            .setMessage("The terminal session has ended.")
+                            .setPositiveButton("OK") { _, _ ->
+                                finish()
+                            }
+                            .show()
+                    } else {
+                        // Activity is not valid, just finish it
+                        finish()
+                    }
                 }
             }
             
@@ -414,6 +534,9 @@ class TerminalActivity : AppCompatActivity() {
         terminalView.post {
             terminalView.attachSession(terminalSession)
             terminalView.requestFocus()
+            
+            // Setup extra keys after terminal session is attached
+            setupExtraKeys()
         }
     }
     

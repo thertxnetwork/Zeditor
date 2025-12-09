@@ -18,13 +18,25 @@
             android:layout_weight="1"
             android:background="#000000" />
 
+        <!-- Extra Keys View -->
+        <com.termux.shared.termux.extrakeys.ExtraKeysView
+            android:id="@+id/extra_keys"
+            style="?android:attr/buttonBarStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="#1A1A1A"
+            android:visibility="visible" />
+        
         <!-- Input Area -->
         <LinearLayout
+            android:id="@+id/input_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:padding="8dp"
-            android:background="#1A1A1A">
+            android:background="#1A1A1A"
+            android:visibility="gone">
 
             <EditText
                 android:id="@+id/input_field"
