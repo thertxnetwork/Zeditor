@@ -226,14 +226,6 @@ public class AmSocketServer {
 
             // termux-am-library is not available - am commands not supported
             throw new UnsupportedOperationException("termux-am-library not available");
-
-            // Set stdout to value set by am command in stdoutPrintStream
-            stdoutPrintStream.flush();
-            stdout.append(stdoutByteStream.toString(StandardCharsets.UTF_8.name()));
-
-            // Set stderr to value set by am command in stderrPrintStream
-            stderrPrintStream.flush();
-            stderr.append(stderrByteStream.toString(StandardCharsets.UTF_8.name()));
         } catch (Exception e) {
             return AmSocketServerErrno.ERRNO_RUN_AM_COMMAND_FAILED_WITH_EXCEPTION.getError(e, Arrays.toString(amCommandArray), e.getMessage());
         }
