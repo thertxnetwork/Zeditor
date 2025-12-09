@@ -11,10 +11,10 @@ import android.view.MenuItem;
 import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.itsaky.androidide.app.BaseIDEActivity;
 import com.termux.shared.R;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.databinding.ActivityReportBinding;
@@ -46,7 +46,7 @@ import org.jetbrains.annotations.NotNull;
  * {@link #deleteReportInfoFilesOlderThanXDays(Context, int, boolean)} in the app to cleanup cached
  * files.
  */
-public class ReportActivity extends BaseIDEActivity {
+public class ReportActivity extends AppCompatActivity {
 
   private ActivityReportBinding binding;
 

@@ -1,7 +1,5 @@
 package com.termux.shared.termux.shell.command.environment;
 
-import static com.itsaky.androidide.utils.Environment.ANDROID_HOME;
-
 import android.content.Context;
 
 import androidx.annotation.NonNull;
@@ -26,6 +24,11 @@ import java.util.HashMap;
 public class TermuxShellEnvironment extends AndroidShellEnvironment {
 
     private static final String LOG_TAG = "TermuxShellEnvironment";
+    
+    // Android SDK home directory environment variable
+    private static final String ANDROID_HOME = System.getenv("ANDROID_HOME") != null 
+        ? System.getenv("ANDROID_HOME") 
+        : "/data/local/tmp/android-sdk";
 
     /** Environment variable for the termux {@link TermuxConstants#TERMUX_PREFIX_DIR_PATH}. */
     public static final String ENV_PREFIX = "PREFIX";
