@@ -102,6 +102,9 @@ class TerminalActivity : AppCompatActivity() {
         // Setup toggle extra keys FAB
         setupToggleExtraKeysFab()
         
+        // Setup extra keys early so they're ready when FAB is clicked
+        setupExtraKeys()
+        
         // Initialize TerminalRenderer with default text size
         // This must be done before attaching any session to prevent NullPointerException
         terminalView.setTextSize(14)
@@ -370,10 +373,15 @@ class TerminalActivity : AppCompatActivity() {
         
         // Toggle extra keys visibility on click
         toggleExtraKeysFab.setOnClickListener {
+            android.util.Log.d("TerminalActivity", "FAB clicked, current visibility: ${extraKeysView.visibility}")
             if (extraKeysView.visibility == View.VISIBLE) {
                 extraKeysView.visibility = View.GONE
+                android.util.Log.d("TerminalActivity", "Extra keys hidden")
             } else {
                 extraKeysView.visibility = View.VISIBLE
+                android.util.Log.d("TerminalActivity", "Extra keys shown")
+                // Request layout to ensure view is properly displayed
+                extraKeysView.requestLayout()
             }
         }
     }
@@ -589,9 +597,6 @@ class TerminalActivity : AppCompatActivity() {
         terminalView.post {
             terminalView.attachSession(terminalSession)
             terminalView.requestFocus()
-            
-            // Setup extra keys after terminal session is attached
-            setupExtraKeys()
             
             // Note: Keyboard is not shown automatically to keep extra keys visible.
             // Users can tap the terminal to show the keyboard when needed.
