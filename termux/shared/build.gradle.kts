@@ -33,6 +33,15 @@ dependencies {
     implementation("com.google.android.material:material:1.13.0")
     implementation("androidx.documentfile:documentfile:1.1.0")
     
+    // Markdown support (CommonMark)
+    implementation("io.noties.markwon:core:4.6.2")
+    implementation("io.noties.markwon:ext-strikethrough:4.6.2")
+    implementation("io.noties.markwon:linkify:4.6.2")
+    implementation("io.noties.markwon:recycler:4.6.2")
+    
+    // Google Guava
+    implementation("com.google.guava:guava:31.1-android")
+    
     implementation(project(":core:resources"))
     implementation(project(":termux:view"))
 }
