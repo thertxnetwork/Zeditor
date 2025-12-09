@@ -72,17 +72,14 @@ public class ReportActivity extends AppCompatActivity {
 
   private static final String LOG_TAG = "ReportActivity";
 
-  @NonNull
-  @Override
-  protected View bindLayout() {
-    this.binding = ActivityReportBinding.inflate(getLayoutInflater());
-    return binding.getRoot();
-  }
-
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     Logger.logVerbose(LOG_TAG, "onCreate");
     super.onCreate(savedInstanceState);
+    
+    // Initialize view binding
+    this.binding = ActivityReportBinding.inflate(getLayoutInflater());
+    setContentView(binding.getRoot());
 
     Toolbar toolbar = findViewById(R.id.toolbar);
     if (toolbar != null) {
