@@ -248,6 +248,10 @@ class UbuntuBootstrap(private val context: Context) {
         // Create .bashrc for root user
         val rootHome = File(rootfsPath, "root")
         rootHome.mkdirs()
+        // Ensure root directory has proper permissions
+        rootHome.setReadable(true, false)
+        rootHome.setWritable(true, false)
+        rootHome.setExecutable(true, false)
         
         File(rootHome, ".bashrc").writeText("""
             # Ubuntu environment
@@ -281,7 +285,8 @@ class UbuntuBootstrap(private val context: Context) {
         val startScript = File(rootfsPath, "start.sh")
         startScript.writeText("""
             #!/bin/bash
-            cd /root
+            # Ensure we're in the root home directory
+            cd /root || cd /
             exec /bin/bash --login
         """.trimIndent())
         startScript.setExecutable(true)
@@ -334,6 +339,12 @@ class UbuntuBootstrap(private val context: Context) {
             "--cwd=/root",
             "--link2symlink",
             "-0", // Fake root user
+            "-w", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "-w", "HOME=/root",
+            "-w", "TERM=xterm-256color",
+            "-w", "TMPDIR=/tmp",
+            "-w", "LANG=C.UTF-8",
+            "-w", "LC_ALL=C.UTF-8",
             "/start.sh"
         )
     }
