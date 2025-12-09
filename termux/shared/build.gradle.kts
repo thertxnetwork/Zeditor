@@ -20,6 +20,10 @@ android {
         jvmToolchain(21)
     }
     
+    buildFeatures {
+        viewBinding = true
+    }
+    
     externalNativeBuild {
         ndkBuild {
             path = file("src/main/cpp/Android.mk")
@@ -41,6 +45,9 @@ dependencies {
     
     // Google Guava
     implementation("com.google.guava:guava:31.1-android")
+    
+    // Apache Commons IO
+    implementation("commons-io:commons-io:2.11.0")
     
     implementation(project(":core:resources"))
     implementation(project(":termux:view"))
