@@ -546,8 +546,11 @@ class TerminalActivity : AppCompatActivity() {
     }
     
     private fun showSoftKeyboard() {
-        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.showSoftInput(terminalView, InputMethodManager.SHOW_IMPLICIT)
+        // Post to message queue to ensure view is ready and has focus
+        terminalView.post {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(terminalView, InputMethodManager.SHOW_IMPLICIT)
+        }
     }
     
     override fun onDestroy() {
