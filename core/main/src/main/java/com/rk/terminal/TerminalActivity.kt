@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.view.inputmethod.InputMethodManager
 import com.google.android.material.button.MaterialButton
 import com.termux.shared.termux.extrakeys.ExtraKeyButton
 import com.termux.shared.termux.extrakeys.ExtraKeysConstants
@@ -105,6 +106,7 @@ class TerminalActivity : AppCompatActivity() {
             override fun onSingleTapUp(e: android.view.MotionEvent?) {
                 // Show soft keyboard when terminal is tapped
                 terminalView.requestFocus()
+                showSoftKeyboard()
             }
             
             override fun shouldBackButtonBeMappedToEscape(): Boolean {
@@ -537,7 +539,17 @@ class TerminalActivity : AppCompatActivity() {
             
             // Setup extra keys after terminal session is attached
             setupExtraKeys()
+            
+            // Show soft keyboard after a short delay to ensure view is ready
+            terminalView.postDelayed({
+                showSoftKeyboard()
+            }, 100)
         }
+    }
+    
+    private fun showSoftKeyboard() {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.showSoftInput(terminalView, InputMethodManager.SHOW_IMPLICIT)
     }
     
     override fun onDestroy() {
