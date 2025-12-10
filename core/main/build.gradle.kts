@@ -108,6 +108,11 @@ dependencies {
     implementation(libs.androidx.documentfile)
     implementation(libs.compose.dnd)
     implementation(libs.androidx.material.icons.core)
+    // Language interpreters for JVM/NDK-based code execution
+    implementation(libs.luaj.jse)      // Lua interpreter (JVM)
+    implementation(libs.rhino)         // JavaScript interpreter (JVM)
+    implementation(libs.beanshell)     // Java-like scripting (JVM)
+    implementation(libs.groovy)        // Groovy interpreter (JVM)
     // implementation("androidx.compose.material:material-icons-extended:1.7.8")
 
     // Modules
