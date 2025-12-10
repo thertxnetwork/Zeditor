@@ -281,7 +281,7 @@ class UbuntuBootstrap(private val context: Context) {
         val startScript = File(rootfsPath, "start.sh")
         startScript.writeText("""
             #!/bin/bash
-            # Ensure we're in the root home directory, fallback to / if it doesn't exist
+            # Try to cd to /root (suppress errors), fallback to / if it fails
             cd /root 2>/dev/null || cd /
             exec /bin/bash --login
         """.trimIndent())
