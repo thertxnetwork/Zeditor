@@ -3,7 +3,21 @@ package com.rk.runner
 import android.content.Context
 import android.graphics.drawable.Drawable
 import com.rk.file.FileObject
-import com.rk.runner.runners.UniversalRunner
+import com.rk.runner.runners.languages.CppRunner
+import com.rk.runner.runners.languages.GoRunner
+import com.rk.runner.runners.languages.GroovyRunner
+import com.rk.runner.runners.languages.JavaRunner
+import com.rk.runner.runners.languages.JavaScriptRunner
+import com.rk.runner.runners.languages.KotlinScriptRunner
+import com.rk.runner.runners.languages.LuaRunner
+import com.rk.runner.runners.languages.PerlRunner
+import com.rk.runner.runners.languages.PhpRunner
+import com.rk.runner.runners.languages.PythonRunner
+import com.rk.runner.runners.languages.RLangRunner
+import com.rk.runner.runners.languages.RubyRunner
+import com.rk.runner.runners.languages.RustRunner
+import com.rk.runner.runners.languages.ShellRunner
+import com.rk.runner.runners.languages.TypeScriptRunner
 import com.rk.runner.runners.web.html.HtmlRunner
 import com.rk.runner.runners.web.markdown.MarkDownRunner
 import com.rk.utils.errorDialog
@@ -35,18 +49,71 @@ object Runner {
 
     init {
         runnerBuilders.apply {
+            // Web runners
             add(object : RunnerBuilder(regex = Regex(".*\\.(html|svg)$"), clazz = HtmlRunner::class.java) {})
             add(object : RunnerBuilder(regex = Regex(".*\\.md$"), clazz = MarkDownRunner::class.java) {})
+
+            // ========================================
+            // JVM-based interpreters (run directly, no terminal needed)
+            // ========================================
+
+            // Lua - LuaJ (Full Lua 5.2 on JVM)
+            add(object : RunnerBuilder(regex = Regex(".*\\.lua$"), clazz = LuaRunner::class.java) {})
+
+            // JavaScript - Rhino (Full ES5-ES6 on JVM)
+            add(object : RunnerBuilder(regex = Regex(".*\\.js$"), clazz = JavaScriptRunner::class.java) {})
+
+            // TypeScript - Rhino with basic transpilation
+            add(object : RunnerBuilder(regex = Regex(".*\\.ts$"), clazz = TypeScriptRunner::class.java) {})
+
+            // Java - BeanShell (Java scripting without compilation)
+            add(object : RunnerBuilder(regex = Regex(".*\\.(java|bsh)$"), clazz = JavaRunner::class.java) {})
+
+            // Groovy - Full Groovy on JVM
+            add(object : RunnerBuilder(regex = Regex(".*\\.(groovy|gvy|gy|gsh)$"), clazz = GroovyRunner::class.java) {})
+
+            // ========================================
+            // Info runners (show setup instructions)
+            // ========================================
+
+            // Python - Info about Chaquopy, p4a, Termux
+            add(object : RunnerBuilder(regex = Regex(".*\\.py$"), clazz = PythonRunner::class.java) {})
+
+            // C/C++ - Info about NDK, Termux
+            add(
+                object :
+                    RunnerBuilder(regex = Regex(".*\\.(c|cpp|cc|cxx|h|hpp)$"), clazz = CppRunner::class.java) {}
+            )
+
+            // Go - Info about gomobile, Termux
+            add(object : RunnerBuilder(regex = Regex(".*\\.go$"), clazz = GoRunner::class.java) {})
+
+            // Rust - Info about cargo-ndk, Termux
+            add(object : RunnerBuilder(regex = Regex(".*\\.rs$"), clazz = RustRunner::class.java) {})
+
+            // PHP - Info about php-java-bridge, Termux
+            add(object : RunnerBuilder(regex = Regex(".*\\.php$"), clazz = PhpRunner::class.java) {})
+
+            // Ruby - Info about JRuby, mruby, Termux
+            add(object : RunnerBuilder(regex = Regex(".*\\.rb$"), clazz = RubyRunner::class.java) {})
+
+            // Kotlin - Info about Android native, scripting
+            add(object : RunnerBuilder(regex = Regex(".*\\.(kt|kts)$"), clazz = KotlinScriptRunner::class.java) {})
+
+            // Shell scripts - Info about Termux, ADB
             add(
                 object :
                     RunnerBuilder(
-                        regex =
-                            Regex(
-                                ".*\\.(py|js|ts|java|kt|rs|rb|php|c|cpp|cc|cxx|cs|sh|bash|zsh|fish|pl|lua|r|R|hs|f90|f95|f03|f08|pas|tcl|elm|fsx|fs)$"
-                            ),
-                        clazz = UniversalRunner::class.java,
+                        regex = Regex(".*\\.(sh|bash|zsh|fish)$"),
+                        clazz = ShellRunner::class.java
                     ) {}
             )
+
+            // Perl - Info about perl-android, SL4A, Termux
+            add(object : RunnerBuilder(regex = Regex(".*\\.pl$"), clazz = PerlRunner::class.java) {})
+
+            // R - Info about Renjin, Termux
+            add(object : RunnerBuilder(regex = Regex(".*\\.(r|R)$"), clazz = RLangRunner::class.java) {})
         }
     }
 

@@ -23,17 +23,37 @@ Or for debug builds:
 - Syntax highlighting for multiple programming languages
 - Extensive customization options
 - Streamlined interface for efficient editing
-- **Terminal support** - Integrated terminal with two modes
-  - **Standard Terminal**: Quick access for running code and shell scripts
-  - **Ubuntu Terminal (Full)**: Complete Ubuntu 22.04 with PRoot (no root required)
-    - Full apt package management
-    - Access to thousands of Ubuntu packages
-    - Persistent Linux environment
-  - Run Python, JavaScript, Java, Kotlin, C/C++, Rust, and many more languages
-  - Execute shell scripts directly from the editor
-  - Support for complex terminal apps in Ubuntu mode (nano, vim, htop, gcc, etc.)
-  - Access terminal via top bar button or "Add" menu
+- **Built-in Language Runners** - Run code directly without external tools:
+  - **JavaScript** (Rhino) - Full ES5-ES6 support, runs directly on JVM
+  - **TypeScript** - Basic transpilation to JavaScript
+  - **Lua** (LuaJ) - Full Lua 5.2 support on JVM
+  - **Java** (BeanShell) - Run Java snippets without compilation
+  - **Groovy** - Full Groovy scripting support
+  - **HTML/SVG** - Local web server preview
+  - **Markdown** - Built-in preview
+- **Language Support Info** - Guidance for running other languages:
+  - Python (via Chaquopy, p4a, or Termux)
+  - C/C++ (via NDK or Termux)
+  - Go (via gomobile or Termux)
+  - Rust (via cargo-ndk or Termux)
+  - PHP, Ruby, Kotlin, Perl, R, and more
 - LSP (Language Server Protocol) support
+
+## Supported Language Runners
+
+| Language | Runner | Type | Notes |
+|----------|--------|------|-------|
+| JavaScript | Rhino | JVM | Full ES5-ES6, console.log support |
+| TypeScript | Rhino | JVM | Basic transpilation, runs as JS |
+| Lua | LuaJ | JVM | Full Lua 5.2, standard library |
+| Java | BeanShell | JVM | Script-style Java execution |
+| Groovy | GroovyShell | JVM | Full Groovy with closures/DSL |
+| HTML/SVG | HttpServer | Web | Local server at port 8357 |
+| Markdown | WebView | Web | Built-in preview |
+| Python | Info | - | Setup instructions provided |
+| C/C++ | Info | - | NDK/Termux instructions |
+| Go | Info | - | gomobile/Termux instructions |
+| Rust | Info | - | cargo-ndk/Termux instructions |
 
 ## Credits
 
