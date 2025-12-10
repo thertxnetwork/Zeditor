@@ -320,6 +320,10 @@ class UbuntuBootstrap(private val context: Context) {
     
     /**
      * Get the PRoot command to launch Ubuntu
+     * 
+     * Note: Environment variables (PATH, HOME, etc.) are set via getEnvironment() and passed
+     * to TerminalSession, not via proot flags. This allows the host process to properly
+     * inherit and pass environment to the proot guest.
      */
     fun getLaunchCommand(): Array<String> {
         val prootPath = File(context.filesDir, "proot").absolutePath
