@@ -114,11 +114,24 @@ dependencies {
     implementation(libs.rhino)         // JavaScript interpreter (JVM)
     implementation(libs.groovy)        // Groovy interpreter (JVM)
     implementation(libs.beanshell)     // Java/BeanShell interpreter (JVM)
-    implementation(libs.clojure)       // Clojure interpreter (JVM)
-    implementation(libs.jython.standalone) // Python/Jython interpreter (JVM)
-    implementation(libs.jruby.complete)    // Ruby/JRuby interpreter (JVM)
+    implementation(libs.clojure) {
+        // Exclude spec.alpha to avoid potential conflicts
+        exclude(group = "org.clojure", module = "spec.alpha")
+    }       // Clojure interpreter (JVM)
+    implementation(libs.jython.standalone) {
+        // Jython standalone includes everything, exclude potential conflicts
+        exclude(group = "org.python", module = "jython-slim")
+    } // Python/Jython interpreter (JVM)
+    implementation(libs.jruby.complete) {
+        // Exclude transitive dependencies that conflict with existing project dependencies
+        exclude(group = "org.jruby.joni", module = "joni")
+        exclude(group = "org.jruby.jcodings", module = "jcodings")
+    }    // Ruby/JRuby interpreter (JVM)
     implementation(libs.scala.library)     // Scala library (JVM)
-    implementation(libs.scala.compiler)    // Scala compiler (JVM)
+    implementation(libs.scala.compiler) {
+        // Exclude XML and other potential conflicts
+        exclude(group = "org.scala-lang.modules", module = "scala-xml_2.13")
+    }    // Scala compiler (JVM)
     implementation(libs.kotlin.scripting.jvm)      // Kotlin scripting (JVM)
     implementation(libs.kotlin.scripting.jvm.host) // Kotlin scripting host (JVM)
     implementation(libs.abcl)              // Common Lisp/ABCL interpreter (JVM)
