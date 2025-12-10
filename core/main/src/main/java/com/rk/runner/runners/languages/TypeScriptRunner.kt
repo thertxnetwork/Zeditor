@@ -19,15 +19,17 @@ import org.mozilla.javascript.Context as RhinoContext
 import org.mozilla.javascript.RhinoException
 
 /**
- * TypeScript runner - runs TypeScript as JavaScript using Rhino.
+ * TypeScript runner - attempts to run TypeScript as JavaScript using Rhino.
  *
- * Note: TypeScript type annotations are stripped at runtime.
- * For full TypeScript compilation, a terminal with Node.js is required.
+ * LIMITATIONS:
+ * - TypeScript-specific syntax (type annotations, interfaces, etc.) will cause errors
+ * - Only works with TypeScript code that is also valid JavaScript
+ * - For full TypeScript support, use Termux with Node.js/ts-node
  *
- * Features:
- * - Runs TypeScript files (types are ignored at runtime)
- * - Full ES5-ES6 JavaScript support via Rhino
- * - No JNI/NDK required (pure JVM)
+ * This runner is best for:
+ * - Simple scripts without type annotations
+ * - JavaScript files with .ts extension
+ * - Quick testing of logic
  */
 class TypeScriptRunner : LanguageRunner() {
 
@@ -37,7 +39,7 @@ class TypeScriptRunner : LanguageRunner() {
 
     override fun getSupportedExtensions(): List<String> = listOf("ts")
 
-    override fun getName(): String = "TypeScript (as JS)"
+    override fun getName(): String = "TypeScript (JS mode)"
 
     override fun getIcon(context: Context): Drawable? {
         return drawables.ic_language_js.getDrawable(context)
@@ -54,10 +56,7 @@ class TypeScriptRunner : LanguageRunner() {
 
         val code = withContext(Dispatchers.IO) { fileObject.readText() }
 
-        // Strip TypeScript type annotations (basic transpilation)
-        val jsCode = stripTypeAnnotations(code)
-
-        val result = executeCode(jsCode)
+        val result = executeCode(code)
 
         withContext(Dispatchers.Main) {
             if (result.isSuccess) {
@@ -67,45 +66,18 @@ class TypeScriptRunner : LanguageRunner() {
                     onOk = {}
                 )
             } else {
-                dialog(title = "TypeScript Error", msg = result.errorOutput.ifEmpty { result.output }, onOk = {})
+                val errorMsg = buildString {
+                    append(result.errorOutput.ifEmpty { result.output })
+                    if (result.errorOutput.contains("syntax error") || result.errorOutput.contains("Unexpected")) {
+                        append("\n\nNote: TypeScript type annotations are not supported.")
+                        append("\nFor full TypeScript, use Termux with ts-node.")
+                    }
+                }
+                dialog(title = "TypeScript Error", msg = errorMsg, onOk = {})
             }
         }
 
         isCurrentlyRunning = false
-    }
-
-    /**
-     * Basic TypeScript to JavaScript transpilation.
-     * Strips type annotations, interfaces, and type declarations.
-     */
-    private fun stripTypeAnnotations(tsCode: String): String {
-        var code = tsCode
-
-        // Remove type annotations from variables (let x: string = ...)
-        code = code.replace(Regex(""":\s*\w+(\[\])?(\s*\|\s*\w+(\[\])?)*(\s*=)"""), "$4")
-
-        // Remove type annotations from function parameters
-        code = code.replace(Regex("""(\w+)\s*:\s*\w+(\[\])?(\s*\|\s*\w+(\[\])?)*(\s*[,)])"""), "$1$5")
-
-        // Remove return type annotations
-        code = code.replace(Regex("""\)\s*:\s*\w+(\[\])?(\s*\|\s*\w+(\[\])?)*\s*\{"""), ") {")
-
-        // Remove interface declarations
-        code = code.replace(Regex("""interface\s+\w+\s*\{[^}]*\}"""), "")
-
-        // Remove type declarations
-        code = code.replace(Regex("""type\s+\w+\s*=\s*[^;]+;"""), "")
-
-        // Remove 'as' type assertions
-        code = code.replace(Regex("""\s+as\s+\w+(\[\])?"""), "")
-
-        // Remove angle bracket type assertions
-        code = code.replace(Regex("""<\w+(\[\])?>\s*"""), "")
-
-        // Remove generic type parameters
-        code = code.replace(Regex("""<\w+(\s*,\s*\w+)*>"""), "")
-
-        return code
     }
 
     override suspend fun executeCode(code: String): ExecutionResult {
@@ -117,52 +89,59 @@ class TypeScriptRunner : LanguageRunner() {
 
             try {
                 rhinoContext = RhinoContext.enter()
-                rhinoContext!!.optimizationLevel = -1
+                rhinoContext?.let { ctx ->
+                    ctx.optimizationLevel = -1
 
-                val scope = rhinoContext!!.initStandardObjects()
+                    val scope = ctx.initStandardObjects()
 
-                // Add console.log support
-                val consoleScript =
+                    // Add console.log support
+                    val consoleScript =
+                        """
+                        var console = {
+                            log: function() {
+                                var args = Array.prototype.slice.call(arguments);
+                                java.lang.System.out.println(args.join(' '));
+                            },
+                            error: function() {
+                                var args = Array.prototype.slice.call(arguments);
+                                java.lang.System.err.println(args.join(' '));
+                            },
+                            warn: function() {
+                                var args = Array.prototype.slice.call(arguments);
+                                java.lang.System.out.println('[WARN] ' + args.join(' '));
+                            }
+                        };
+                        var print = console.log;
                     """
-                    var console = {
-                        log: function() {
-                            var args = Array.prototype.slice.call(arguments);
-                            java.lang.System.out.println(args.join(' '));
-                        },
-                        error: function() {
-                            var args = Array.prototype.slice.call(arguments);
-                            java.lang.System.err.println(args.join(' '));
-                        },
-                        warn: function() {
-                            var args = Array.prototype.slice.call(arguments);
-                            java.lang.System.out.println('[WARN] ' + args.join(' '));
+                            .trimIndent()
+
+                    ctx.evaluateString(scope, consoleScript, "console", 1, null)
+
+                    System.setOut(printStream)
+
+                    val result = ctx.evaluateString(scope, code, "script.ts", 1, null)
+
+                    System.setOut(originalOut)
+
+                    val executionTime = System.currentTimeMillis() - startTime
+                    val output = outputStream.toString("UTF-8")
+
+                    val finalOutput =
+                        if (output.isNotEmpty()) {
+                            output
+                        } else if (result != null && result != RhinoContext.getUndefinedValue()) {
+                            RhinoContext.toString(result)
+                        } else {
+                            "(Execution completed in ${executionTime}ms)"
                         }
-                    };
-                    var print = console.log;
-                """
-                        .trimIndent()
 
-                rhinoContext!!.evaluateString(scope, consoleScript, "console", 1, null)
-
-                System.setOut(printStream)
-
-                val result = rhinoContext!!.evaluateString(scope, code, "script.ts", 1, null)
-
-                System.setOut(originalOut)
-
-                val executionTime = System.currentTimeMillis() - startTime
-                val output = outputStream.toString("UTF-8")
-
-                val finalOutput =
-                    if (output.isNotEmpty()) {
-                        output
-                    } else if (result != null && result != RhinoContext.getUndefinedValue()) {
-                        RhinoContext.toString(result)
-                    } else {
-                        "(Execution completed in ${executionTime}ms)"
-                    }
-
-                ExecutionResult(output = finalOutput, errorOutput = "", isSuccess = true, executionTimeMs = executionTime)
+                    ExecutionResult(output = finalOutput, errorOutput = "", isSuccess = true, executionTimeMs = executionTime)
+                } ?: ExecutionResult(
+                    output = "",
+                    errorOutput = "Failed to initialize JavaScript context",
+                    isSuccess = false,
+                    executionTimeMs = 0
+                )
             } catch (e: RhinoException) {
                 System.setOut(originalOut)
                 val executionTime = System.currentTimeMillis() - startTime
@@ -182,7 +161,9 @@ class TypeScriptRunner : LanguageRunner() {
                     executionTimeMs = executionTime
                 )
             } finally {
-                RhinoContext.exit()
+                try {
+                    RhinoContext.exit()
+                } catch (_: Exception) {}
                 rhinoContext = null
                 printStream.close()
                 outputStream.close()

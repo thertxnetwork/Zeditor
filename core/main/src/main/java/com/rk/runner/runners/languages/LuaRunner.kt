@@ -82,21 +82,28 @@ class LuaRunner : LanguageRunner() {
 
             try {
                 globals = JsePlatform.standardGlobals()
-                globals!!.STDOUT = printStream
-                globals!!.STDERR = errorPrintStream
+                globals?.let { g ->
+                    g.STDOUT = printStream
+                    g.STDERR = errorPrintStream
 
-                val chunk = globals!!.load(code)
-                chunk.call()
+                    val chunk = g.load(code)
+                    chunk.call()
 
-                val executionTime = System.currentTimeMillis() - startTime
-                val output = outputStream.toString("UTF-8")
-                val errorOutput = errorStream.toString("UTF-8")
+                    val executionTime = System.currentTimeMillis() - startTime
+                    val output = outputStream.toString("UTF-8")
+                    val errorOutput = errorStream.toString("UTF-8")
 
-                ExecutionResult(
-                    output = output.ifEmpty { "(Execution completed in ${executionTime}ms)" },
-                    errorOutput = errorOutput,
-                    isSuccess = true,
-                    executionTimeMs = executionTime
+                    ExecutionResult(
+                        output = output.ifEmpty { "(Execution completed in ${executionTime}ms)" },
+                        errorOutput = errorOutput,
+                        isSuccess = true,
+                        executionTimeMs = executionTime
+                    )
+                } ?: ExecutionResult(
+                    output = "",
+                    errorOutput = "Failed to initialize Lua context",
+                    isSuccess = false,
+                    executionTimeMs = 0
                 )
             } catch (e: LuaError) {
                 val executionTime = System.currentTimeMillis() - startTime

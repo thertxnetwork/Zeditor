@@ -92,7 +92,7 @@ class GroovyRunner : LanguageRunner() {
                 System.setOut(printStream)
                 System.setErr(errorPrintStream)
 
-                val result = shell!!.evaluate(code)
+                val result = shell?.evaluate(code)
 
                 System.setOut(originalOut)
                 System.setErr(originalErr)

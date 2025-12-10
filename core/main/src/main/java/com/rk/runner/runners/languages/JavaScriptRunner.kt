@@ -81,58 +81,65 @@ class JavaScriptRunner : LanguageRunner() {
 
             try {
                 rhinoContext = RhinoContext.enter()
-                // Set optimization level to -1 to interpret code (required on Android)
-                rhinoContext!!.optimizationLevel = -1
+                rhinoContext?.let { ctx ->
+                    // Set optimization level to -1 to interpret code (required on Android)
+                    ctx.optimizationLevel = -1
 
-                val scope = rhinoContext!!.initStandardObjects()
+                    val scope = ctx.initStandardObjects()
 
-                // Add console.log support
-                val consoleScript =
+                    // Add console.log support
+                    val consoleScript =
+                        """
+                        var console = {
+                            log: function() {
+                                var args = Array.prototype.slice.call(arguments);
+                                java.lang.System.out.println(args.join(' '));
+                            },
+                            error: function() {
+                                var args = Array.prototype.slice.call(arguments);
+                                java.lang.System.err.println(args.join(' '));
+                            },
+                            warn: function() {
+                                var args = Array.prototype.slice.call(arguments);
+                                java.lang.System.out.println('[WARN] ' + args.join(' '));
+                            },
+                            info: function() {
+                                var args = Array.prototype.slice.call(arguments);
+                                java.lang.System.out.println('[INFO] ' + args.join(' '));
+                            }
+                        };
+                        var print = console.log;
                     """
-                    var console = {
-                        log: function() {
-                            var args = Array.prototype.slice.call(arguments);
-                            java.lang.System.out.println(args.join(' '));
-                        },
-                        error: function() {
-                            var args = Array.prototype.slice.call(arguments);
-                            java.lang.System.err.println(args.join(' '));
-                        },
-                        warn: function() {
-                            var args = Array.prototype.slice.call(arguments);
-                            java.lang.System.out.println('[WARN] ' + args.join(' '));
-                        },
-                        info: function() {
-                            var args = Array.prototype.slice.call(arguments);
-                            java.lang.System.out.println('[INFO] ' + args.join(' '));
+                            .trimIndent()
+
+                    ctx.evaluateString(scope, consoleScript, "console", 1, null)
+
+                    // Redirect System.out to capture output
+                    System.setOut(printStream)
+
+                    val result = ctx.evaluateString(scope, code, "script.js", 1, null)
+
+                    System.setOut(originalOut)
+
+                    val executionTime = System.currentTimeMillis() - startTime
+                    val output = outputStream.toString("UTF-8")
+
+                    val finalOutput =
+                        if (output.isNotEmpty()) {
+                            output
+                        } else if (result != null && result != RhinoContext.getUndefinedValue()) {
+                            RhinoContext.toString(result)
+                        } else {
+                            "(Execution completed in ${executionTime}ms)"
                         }
-                    };
-                    var print = console.log;
-                """
-                        .trimIndent()
 
-                rhinoContext!!.evaluateString(scope, consoleScript, "console", 1, null)
-
-                // Redirect System.out to capture output
-                System.setOut(printStream)
-
-                val result = rhinoContext!!.evaluateString(scope, code, "script.js", 1, null)
-
-                System.setOut(originalOut)
-
-                val executionTime = System.currentTimeMillis() - startTime
-                val output = outputStream.toString("UTF-8")
-
-                val finalOutput =
-                    if (output.isNotEmpty()) {
-                        output
-                    } else if (result != null && result != RhinoContext.getUndefinedValue()) {
-                        RhinoContext.toString(result)
-                    } else {
-                        "(Execution completed in ${executionTime}ms)"
-                    }
-
-                ExecutionResult(output = finalOutput, errorOutput = "", isSuccess = true, executionTimeMs = executionTime)
+                    ExecutionResult(output = finalOutput, errorOutput = "", isSuccess = true, executionTimeMs = executionTime)
+                } ?: ExecutionResult(
+                    output = "",
+                    errorOutput = "Failed to initialize JavaScript context",
+                    isSuccess = false,
+                    executionTimeMs = 0
+                )
             } catch (e: RhinoException) {
                 System.setOut(originalOut)
                 val executionTime = System.currentTimeMillis() - startTime

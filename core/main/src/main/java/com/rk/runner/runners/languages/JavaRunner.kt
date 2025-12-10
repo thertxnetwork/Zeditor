@@ -84,45 +84,56 @@ class JavaRunner : LanguageRunner() {
 
             try {
                 interpreter = Interpreter()
-                interpreter!!.out = printStream
-                interpreter!!.err = errorPrintStream
+                interpreter?.let { interp ->
+                    interp.out = printStream
+                    interp.err = errorPrintStream
 
-                // Redirect System.out and System.err
-                System.setOut(printStream)
-                System.setErr(errorPrintStream)
+                    // Redirect System.out and System.err
+                    System.setOut(printStream)
+                    System.setErr(errorPrintStream)
 
-                // Add some useful imports by default
-                val setupCode =
+                    // Add some useful imports by default
+                    val setupCode =
+                        """
+                        import java.util.*;
+                        import java.io.*;
+                        import java.lang.*;
                     """
-                    import java.util.*;
-                    import java.io.*;
-                    import java.lang.*;
-                """
-                        .trimIndent()
+                            .trimIndent()
 
-                interpreter!!.eval(setupCode)
-                val result = interpreter!!.eval(code)
+                    interp.eval(setupCode)
+                    val result = interp.eval(code)
 
-                System.setOut(originalOut)
-                System.setErr(originalErr)
+                    System.setOut(originalOut)
+                    System.setErr(originalErr)
 
-                val executionTime = System.currentTimeMillis() - startTime
-                val output = outputStream.toString("UTF-8")
-                val errorOutput = errorStream.toString("UTF-8")
+                    val executionTime = System.currentTimeMillis() - startTime
+                    val output = outputStream.toString("UTF-8")
+                    val errorOutput = errorStream.toString("UTF-8")
 
-                val finalOutput =
-                    when {
-                        output.isNotEmpty() -> output
-                        result != null -> result.toString()
-                        else -> "(Execution completed in ${executionTime}ms)"
-                    }
+                    val finalOutput =
+                        when {
+                            output.isNotEmpty() -> output
+                            result != null -> result.toString()
+                            else -> "(Execution completed in ${executionTime}ms)"
+                        }
 
-                ExecutionResult(
-                    output = finalOutput,
-                    errorOutput = errorOutput,
-                    isSuccess = errorOutput.isEmpty(),
-                    executionTimeMs = executionTime
-                )
+                    ExecutionResult(
+                        output = finalOutput,
+                        errorOutput = errorOutput,
+                        isSuccess = errorOutput.isEmpty(),
+                        executionTimeMs = executionTime
+                    )
+                } ?: run {
+                    System.setOut(originalOut)
+                    System.setErr(originalErr)
+                    ExecutionResult(
+                        output = "",
+                        errorOutput = "Failed to initialize Java interpreter",
+                        isSuccess = false,
+                        executionTimeMs = 0
+                    )
+                }
             } catch (e: EvalError) {
                 System.setOut(originalOut)
                 System.setErr(originalErr)
