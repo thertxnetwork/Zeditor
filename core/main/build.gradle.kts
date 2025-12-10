@@ -119,8 +119,11 @@ dependencies {
         exclude(group = "org.clojure", module = "spec.alpha")
     }       // Clojure interpreter (JVM)
     implementation(libs.jython.standalone) {
-        // Jython standalone includes everything, exclude potential conflicts
+        // Jython standalone includes everything, exclude JNR dependencies that conflict with JRuby
         exclude(group = "org.python", module = "jython-slim")
+        exclude(group = "com.github.jnr", module = "jnr-posix")
+        exclude(group = "com.github.jnr", module = "jnr-constants")
+        exclude(group = "com.github.jnr", module = "jnr-ffi")
     } // Python/Jython interpreter (JVM)
     implementation(libs.jruby.complete) {
         // Exclude transitive dependencies that conflict with existing project dependencies
