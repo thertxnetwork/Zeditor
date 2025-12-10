@@ -175,7 +175,7 @@ fun CodeRunnerScreen(
                         onClick = { runCode() },
                         enabled = executionState !is ExecutionState.Running
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(strings.run))
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(strings.rerun_code))
                     }
                 }
             )

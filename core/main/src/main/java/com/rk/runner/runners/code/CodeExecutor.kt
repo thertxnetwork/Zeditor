@@ -50,6 +50,7 @@ object CodeExecutor {
     /**
      * Supported language configurations.
      * Each configuration includes possible interpreter paths for different Android environments.
+     * Note: The extension matching is case-insensitive, so we only need one entry per extension pattern.
      */
     private val languageConfigs = listOf(
         LanguageConfig(
@@ -110,8 +111,9 @@ object CodeExecutor {
                 "lua"
             )
         ),
+        // Shell script with .sh extension - uses sh primarily
         LanguageConfig(
-            name = "Bash",
+            name = "Shell",
             extension = "sh",
             interpreters = listOf(
                 "/system/bin/sh",
@@ -120,6 +122,7 @@ object CodeExecutor {
                 "sh"
             )
         ),
+        // Bash script with .bash extension - prefers bash
         LanguageConfig(
             name = "Bash",
             extension = "bash",
@@ -147,20 +150,10 @@ object CodeExecutor {
                 "fish"
             )
         ),
+        // R files - extension matching is case-insensitive so this handles both .r and .R
         LanguageConfig(
             name = "R",
             extension = "r",
-            interpreters = listOf(
-                "/data/data/com.termux/files/usr/bin/Rscript",
-                "/data/data/com.termux/files/usr/bin/R",
-                "Rscript",
-                "R"
-            ),
-            runArgs = listOf("--vanilla")
-        ),
-        LanguageConfig(
-            name = "R",
-            extension = "R",
             interpreters = listOf(
                 "/data/data/com.termux/files/usr/bin/Rscript",
                 "/data/data/com.termux/files/usr/bin/R",

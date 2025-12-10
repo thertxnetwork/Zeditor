@@ -501,4 +501,5 @@
     <string name="no_interpreter_found">No %s interpreter found. Please install %s (e.g., via Termux) to run this file.</string>
     <string name="execution_timeout">Execution timed out after %d seconds</string>
     <string name="execution_failed">Execution failed: %s</string>
+    <string name="rerun_code">Re-run code</string>
 </resources>
