@@ -26,28 +26,6 @@ android {
         minSdk = 26
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
-        
-        // Add CMake configuration for native library
-        externalNativeBuild {
-            cmake {
-                cppFlags += "-std=c++17"
-                arguments += listOf(
-                    "-DANDROID_STL=c++_shared"
-                )
-            }
-        }
-        
-        ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
-        }
-    }
-    
-    // Add external native build configuration
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
     }
 
     buildTypes {
@@ -140,16 +118,8 @@ dependencies {
     implementation(project(":core:components"))
     // implementation(project(":core:extension"))
     
-    // Termux modules for proper terminal emulation
-    implementation(project(":termux:emulator"))
-    implementation(project(":termux:view"))
-    implementation(project(":termux:shared"))
-    
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidsvg.aar)
-    
-    // Apache Commons Compress for tar.gz extraction
-    implementation(libs.commons.compress)
 }
 
 abstract class GenerateSupportedLocales : DefaultTask() {

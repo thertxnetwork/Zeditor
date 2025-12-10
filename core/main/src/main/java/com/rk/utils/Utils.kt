@@ -137,25 +137,6 @@ fun isChinaDevice(context: Context): Boolean {
     return simCountry.equals("cn", ignoreCase = true)
 }
 
-fun showTerminalNotice(activity: Activity, onOk: () -> Unit) {
-    if (isChinaDevice(activity) && !Settings.terminalVirusNotice) {
-        dialog(
-            context = activity,
-            title = strings.attention.getString(),
-            msg = strings.terminal_virus_notice.getString(),
-            onOk = {
-                Settings.terminalVirusNotice = true
-                it?.dismiss()
-                onOk()
-            },
-            onCancel = {},
-            cancelable = false,
-        )
-    } else {
-        onOk()
-    }
-}
-
 fun isAppInstalled(context: Context, packageName: String): Boolean {
     return try {
         context.packageManager.getPackageInfo(packageName, 0)
