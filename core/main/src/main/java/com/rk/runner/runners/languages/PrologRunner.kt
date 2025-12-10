@@ -102,12 +102,13 @@ class PrologRunner : LanguageRunner() {
                         output.appendLine("Facts and rules defined:")
                         
                         // Display loaded clauses
+                        val clauseCount = theory.clauses.count()
                         theory.clauses.take(10).forEach { clause ->
                             output.appendLine("  ${clause}")
                         }
                         
-                        if (theory.clauses.count() > 10) {
-                            output.appendLine("  ... and ${theory.clauses.count() - 10} more clauses")
+                        if (clauseCount > 10) {
+                            output.appendLine("  ... and ${clauseCount - 10} more clauses")
                         }
 
                         output.appendLine()

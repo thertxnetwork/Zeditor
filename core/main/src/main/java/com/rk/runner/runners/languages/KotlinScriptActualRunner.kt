@@ -20,6 +20,7 @@ import kotlin.script.experimental.jvm.dependenciesFromCurrentContext
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
+import kotlin.script.templates.standard.ScriptTemplateWithArgs
 
 /**
  * Kotlin Script language runner using Kotlin Scripting Host.
@@ -88,7 +89,7 @@ class KotlinScriptActualRunner : LanguageRunner() {
                 val scriptingHost = BasicJvmScriptingHost()
 
                 // Configure compilation
-                val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<kotlin.script.templates.standard.ScriptTemplateWithArgs> {
+                val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<ScriptTemplateWithArgs> {
                     jvm {
                         dependenciesFromCurrentContext(wholeClasspath = true)
                     }

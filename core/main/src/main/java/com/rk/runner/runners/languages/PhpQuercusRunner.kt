@@ -100,7 +100,8 @@ class PhpQuercusRunner : LanguageRunner() {
                     val parser = QuercusParser(qc)
                     
                     // Ensure code has PHP tags
-                    val phpCode = if (!code.trim().startsWith("<?php") && !code.trim().startsWith("<?")) {
+                    val trimmedCode = code.trim()
+                    val phpCode = if (!trimmedCode.startsWith("<?php") && !trimmedCode.startsWith("<?")) {
                         "<?php\n$code\n?>"
                     } else {
                         code

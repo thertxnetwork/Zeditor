@@ -87,10 +87,8 @@ class CommonLispRunner : LanguageRunner() {
                     System.setOut(printStream)
                     System.setErr(errorPrintStream)
 
-                    // Redirect Lisp standard output
-                    val outputLispStream = Stream.createCharacterOutputStream(printStream)
-                    interp.eval("(setq *standard-output* (make-two-way-stream *standard-input* " +
-                               "(make-synonym-stream '*terminal-io*)))")
+                    // Note: ABCL output redirection is handled via System.out/err
+                    // More complex Lisp-level stream redirection can be added if needed
 
                     // Evaluate the code
                     val reader = StringReader(code)

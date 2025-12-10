@@ -32,15 +32,13 @@ class ExecutionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val result = intent.getParcelableExtra<ExecutionResultData>("execution_result")
-            ?: ExecutionResultData(
-                languageName = "Unknown",
-                fileName = "Unknown",
-                output = "No result data",
-                errorOutput = "",
-                isSuccess = false,
-                executionTimeMs = 0
-            )
+        // Safely retrieve execution result with fallback for missing data
+        val result = try {
+            intent.getParcelableExtra<ExecutionResultData>("execution_result")
+                ?: createFallbackResult("No execution result data found in intent")
+        } catch (e: Exception) {
+            createFallbackResult("Error retrieving execution result: ${e.message}")
+        }
         
         setContent {
             XedTheme {
@@ -50,6 +48,17 @@ class ExecutionActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun createFallbackResult(errorMessage: String): ExecutionResultData {
+        return ExecutionResultData(
+            languageName = "Unknown",
+            fileName = "Unknown",
+            output = "",
+            errorOutput = errorMessage,
+            isSuccess = false,
+            executionTimeMs = 0
+        )
     }
 }
 
