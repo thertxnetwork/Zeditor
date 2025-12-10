@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ktfmt)
+    id("kotlin-parcelize")
 }
 
 val gitCommitHash: Provider<String> =
@@ -112,6 +113,9 @@ dependencies {
     implementation(libs.luaj.jse)      // Lua interpreter (JVM)
     implementation(libs.rhino)         // JavaScript interpreter (JVM)
     implementation(libs.groovy)        // Groovy interpreter (JVM)
+    implementation(libs.beanshell)     // Java/BeanShell interpreter (JVM)
+    implementation(libs.clojure)       // Clojure interpreter (JVM)
+    implementation(libs.kawa)          // Scheme/Kawa interpreter (JVM)
     // implementation("androidx.compose.material:material-icons-extended:1.7.8")
 
     // Modules

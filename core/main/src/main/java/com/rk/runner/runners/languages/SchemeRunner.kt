@@ -10,35 +10,38 @@ import com.rk.resources.getString
 import com.rk.resources.strings
 import com.rk.runner.currentRunner
 import com.rk.utils.dialog
+import gnu.expr.Language
+import gnu.kawa.io.CharArrayOutPort
+import gnu.kawa.io.OutPort
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.lang.ref.WeakReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.luaj.vm2.Globals
-import org.luaj.vm2.LuaError
-import org.luaj.vm2.lib.jse.JsePlatform
 
 /**
- * Lua language runner using LuaJ (pure Java implementation).
+ * Scheme language runner using Kawa (full Scheme R7RS implementation on JVM).
  *
  * Features:
- * - Full Lua 5.2 support
+ * - Full Scheme R7RS support
  * - No JNI/NDK required (pure JVM)
- * - Direct Java interop
  * - Complete standard library
+ * - Functional programming
+ * - Lisp-family language
+ * - Java interoperability
  *
- * Recommended by: https://github.com/luaj/luaj
+ * Kawa is a mature, feature-rich Scheme implementation that compiles Scheme
+ * code to Java bytecode, providing excellent performance.
+ *
+ * Recommended for: Functional programming, education, scripting
  */
-class LuaRunner : LanguageRunner() {
+class SchemeRunner : LanguageRunner() {
 
-    private var globals: Globals? = null
+    override fun getLanguageName(): String = "Scheme"
 
-    override fun getLanguageName(): String = "Lua"
+    override fun getSupportedExtensions(): List<String> = listOf("scm", "ss", "sch")
 
-    override fun getSupportedExtensions(): List<String> = listOf("lua")
-
-    override fun getName(): String = "Lua (LuaJ)"
+    override fun getName(): String = "Scheme (Kawa)"
 
     override fun getIcon(context: Context): Drawable? {
         return drawables.run.getDrawable(context)
@@ -71,45 +74,60 @@ class LuaRunner : LanguageRunner() {
             val errorStream = ByteArrayOutputStream()
             val printStream = PrintStream(outputStream)
             val errorPrintStream = PrintStream(errorStream)
+            val originalOut = System.out
+            val originalErr = System.err
 
             try {
-                globals = JsePlatform.standardGlobals()
-                globals?.let { g ->
-                    g.STDOUT = printStream
-                    g.STDERR = errorPrintStream
+                // Get Scheme language instance
+                val scheme = Language.getInstance("scheme")
+                
+                // Redirect output streams
+                System.setOut(printStream)
+                System.setErr(errorPrintStream)
 
-                    val chunk = g.load(code)
-                    chunk.call()
+                // Create output port for Kawa
+                val outPort = CharArrayOutPort()
+                OutPort.setOutDefault(outPort)
 
-                    val executionTime = System.currentTimeMillis() - startTime
-                    val output = outputStream.toString("UTF-8")
-                    val errorOutput = errorStream.toString("UTF-8")
+                // Evaluate the code
+                val result = scheme.eval(code)
 
-                    ExecutionResult(
-                        output = output.ifEmpty { "(Execution completed in ${executionTime}ms)" },
-                        errorOutput = errorOutput,
-                        isSuccess = true,
-                        executionTimeMs = executionTime
-                    )
-                } ?: ExecutionResult(
-                    output = "",
-                    errorOutput = "Failed to initialize Lua context",
-                    isSuccess = false,
-                    executionTimeMs = 0
-                )
-            } catch (e: LuaError) {
+                System.setOut(originalOut)
+                System.setErr(originalErr)
+
                 val executionTime = System.currentTimeMillis() - startTime
+                val kawaOutput = outPort.toString()
+                val systemOutput = outputStream.toString("UTF-8")
+                val errorOutput = errorStream.toString("UTF-8")
+
+                // Combine Kawa output and system output
+                val combinedOutput = when {
+                    kawaOutput.isNotEmpty() && systemOutput.isNotEmpty() -> 
+                        "$systemOutput$kawaOutput"
+                    kawaOutput.isNotEmpty() -> kawaOutput
+                    systemOutput.isNotEmpty() -> systemOutput
+                    else -> ""
+                }
+
+                val finalOutput = when {
+                    combinedOutput.isNotEmpty() -> combinedOutput
+                    result != null && result.toString() != "#!void" -> result.toString()
+                    else -> "(Execution completed in ${executionTime}ms)"
+                }
+
                 ExecutionResult(
-                    output = outputStream.toString("UTF-8"),
-                    errorOutput = "Lua Error: ${e.message}",
-                    isSuccess = false,
+                    output = finalOutput,
+                    errorOutput = errorOutput,
+                    isSuccess = errorOutput.isEmpty(),
                     executionTimeMs = executionTime
                 )
             } catch (e: Exception) {
+                System.setOut(originalOut)
+                System.setErr(originalErr)
                 val executionTime = System.currentTimeMillis() - startTime
                 ExecutionResult(
                     output = outputStream.toString("UTF-8"),
-                    errorOutput = "Error: ${e.message}",
+                    errorOutput = "Scheme Error: ${e.message}",
                     isSuccess = false,
                     executionTimeMs = executionTime
                 )
@@ -124,6 +142,5 @@ class LuaRunner : LanguageRunner() {
 
     override suspend fun stop() {
         super.stop()
-        globals = null
     }
 }

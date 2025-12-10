@@ -14,5 +14,10 @@
             </intent-filter>
         </provider>
 
+        <activity
+            android:name="com.rk.runner.ExecutionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight" />
+
     </application>
 </manifest>

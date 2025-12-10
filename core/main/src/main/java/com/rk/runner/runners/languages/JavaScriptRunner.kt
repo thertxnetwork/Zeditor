@@ -58,15 +58,7 @@ class JavaScriptRunner : LanguageRunner() {
         val result = executeCode(code)
 
         withContext(Dispatchers.Main) {
-            if (result.isSuccess) {
-                dialog(
-                    title = "JavaScript Output",
-                    msg = if (result.output.isNotEmpty()) result.output else "(No output)",
-                    onOk = {}
-                )
-            } else {
-                dialog(title = "JavaScript Error", msg = result.errorOutput.ifEmpty { result.output }, onOk = {})
-            }
+            showExecutionResult(context, result, fileObject.getName())
         }
 
         isCurrentlyRunning = false

@@ -5,6 +5,9 @@ anrwatchdog = "1.4.0"
 luaj = "3.0.1"
 rhino = "1.7.14"
 groovy = "3.0.19"
+beanshell = "2.0b6"
+clojure = "1.11.1"
+kawa = "3.1.1"
 appcompat = "1.7.1"
 browser = "1.9.0"
 commonsNet = "3.12.0"
@@ -127,6 +130,9 @@ tests-robolectric = { module = "org.robolectric:robolectric", version = "4.16" }
 luaj-jse = { module = "org.luaj:luaj-jse", version.ref = "luaj" }
 rhino = { module = "org.mozilla:rhino", version.ref = "rhino" }
 groovy = { module = "org.codehaus.groovy:groovy", version.ref = "groovy" }
+beanshell = { module = "org.apache-extras.beanshell:bsh", version.ref = "beanshell" }
+clojure = { module = "org.clojure:clojure", version.ref = "clojure" }
+kawa = { module = "gnu.kawa:kawa", version.ref = "kawa" }
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }

@@ -2,6 +2,8 @@ package com.rk.runner.runners.languages
 
 import android.content.Context
 import android.graphics.drawable.Drawable
+import clojure.lang.Compiler
+import clojure.lang.RT
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.resources.drawables
@@ -10,35 +12,37 @@ import com.rk.resources.getString
 import com.rk.resources.strings
 import com.rk.runner.currentRunner
 import com.rk.utils.dialog
-import groovy.lang.Binding
-import groovy.lang.GroovyShell
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import java.io.PushbackReader
+import java.io.StringReader
 import java.lang.ref.WeakReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Groovy language runner using GroovyShell.
+ * Clojure language runner using the official Clojure JVM implementation.
  *
  * Features:
- * - Full Groovy language support
- * - Java interoperability
+ * - Full Clojure language support
+ * - Functional programming capabilities
  * - No JNI/NDK required (pure JVM)
- * - Dynamic scripting capabilities
- * - Closures and DSL support
+ * - Complete Clojure standard library
+ * - Lisp-style syntax
+ * - Immutable data structures
  *
- * Recommended for: scripting, DSLs, and Java-compatible code
+ * Clojure is a modern, dynamic, functional dialect of Lisp that runs on the JVM.
+ * Perfect for functional programming, data manipulation, and scripting.
+ *
+ * Recommended for: Functional programming, data processing, scripting
  */
-class GroovyRunner : LanguageRunner() {
+class ClojureRunner : LanguageRunner() {
 
-    private var shell: GroovyShell? = null
+    override fun getLanguageName(): String = "Clojure"
 
-    override fun getLanguageName(): String = "Groovy"
+    override fun getSupportedExtensions(): List<String> = listOf("clj", "cljs", "cljc")
 
-    override fun getSupportedExtensions(): List<String> = listOf("groovy", "gvy", "gy", "gsh")
-
-    override fun getName(): String = "Groovy"
+    override fun getName(): String = "Clojure"
 
     override fun getIcon(context: Context): Drawable? {
         return drawables.run.getDrawable(context)
@@ -75,16 +79,35 @@ class GroovyRunner : LanguageRunner() {
             val originalErr = System.err
 
             try {
-                val binding = Binding()
-                binding.setVariable("out", printStream)
+                // Initialize Clojure runtime if needed
+                RT.init()
 
-                shell = GroovyShell(binding)
-
-                // Redirect System.out and System.err
+                // Redirect output streams
                 System.setOut(printStream)
                 System.setErr(errorPrintStream)
 
-                val result = shell?.evaluate(code)
+                // Bind *out* and *err* for Clojure printing
+                val outWriter = java.io.PrintWriter(printStream, true)
+                val errWriter = java.io.PrintWriter(errorPrintStream, true)
+                
+                RT.OUT.bindRoot(outWriter)
+                RT.ERR.bindRoot(errWriter)
+
+                // Evaluate the code
+                val reader = PushbackReader(StringReader(code))
+                var result: Any? = null
+                
+                try {
+                    while (true) {
+                        val form = clojure.lang.LispReader.read(reader, false, null, false)
+                        if (form == null) break
+                        result = Compiler.eval(form)
+                    }
+                } catch (e: Exception) {
+                    if (e.message?.contains("EOF") != true) {
+                        throw e
+                    }
+                }
 
                 System.setOut(originalOut)
                 System.setErr(originalErr)
@@ -93,12 +116,11 @@ class GroovyRunner : LanguageRunner() {
                 val output = outputStream.toString("UTF-8")
                 val errorOutput = errorStream.toString("UTF-8")
 
-                val finalOutput =
-                    when {
-                        output.isNotEmpty() -> output
-                        result != null -> result.toString()
-                        else -> "(Execution completed in ${executionTime}ms)"
-                    }
+                val finalOutput = when {
+                    output.isNotEmpty() -> output
+                    result != null -> result.toString()
+                    else -> "(Execution completed in ${executionTime}ms)"
+                }
 
                 ExecutionResult(
                     output = finalOutput,
@@ -112,7 +134,7 @@ class GroovyRunner : LanguageRunner() {
                 val executionTime = System.currentTimeMillis() - startTime
                 ExecutionResult(
                     output = outputStream.toString("UTF-8"),
-                    errorOutput = "Groovy Error: ${e.message}",
+                    errorOutput = "Clojure Error: ${e.message}",
                     isSuccess = false,
                     executionTimeMs = executionTime
                 )
@@ -127,6 +149,5 @@ class GroovyRunner : LanguageRunner() {
 
     override suspend fun stop() {
         super.stop()
-        shell = null
     }
 }

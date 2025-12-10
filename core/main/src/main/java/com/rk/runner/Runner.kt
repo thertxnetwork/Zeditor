@@ -3,9 +3,11 @@ package com.rk.runner
 import android.content.Context
 import android.graphics.drawable.Drawable
 import com.rk.file.FileObject
+import com.rk.runner.runners.languages.ClojureRunner
 import com.rk.runner.runners.languages.CppRunner
 import com.rk.runner.runners.languages.GoRunner
 import com.rk.runner.runners.languages.GroovyRunner
+import com.rk.runner.runners.languages.JavaRunner
 import com.rk.runner.runners.languages.JavaScriptRunner
 import com.rk.runner.runners.languages.KotlinScriptRunner
 import com.rk.runner.runners.languages.LuaRunner
@@ -15,6 +17,7 @@ import com.rk.runner.runners.languages.PythonRunner
 import com.rk.runner.runners.languages.RLangRunner
 import com.rk.runner.runners.languages.RubyRunner
 import com.rk.runner.runners.languages.RustRunner
+import com.rk.runner.runners.languages.SchemeRunner
 import com.rk.runner.runners.languages.ShellRunner
 import com.rk.runner.runners.languages.TypeScriptRunner
 import com.rk.runner.runners.web.html.HtmlRunner
@@ -67,6 +70,15 @@ object Runner {
 
             // Groovy - Full Groovy on JVM
             add(object : RunnerBuilder(regex = Regex(".*\\.(groovy|gvy|gy|gsh)$"), clazz = GroovyRunner::class.java) {})
+
+            // Java - BeanShell (Script-style Java execution)
+            add(object : RunnerBuilder(regex = Regex(".*\\.(java|bsh)$"), clazz = JavaRunner::class.java) {})
+
+            // Clojure - Full Clojure on JVM
+            add(object : RunnerBuilder(regex = Regex(".*\\.(clj|cljs|cljc)$"), clazz = ClojureRunner::class.java) {})
+
+            // Scheme - Kawa (Full Scheme R7RS on JVM)
+            add(object : RunnerBuilder(regex = Regex(".*\\.(scm|ss|sch)$"), clazz = SchemeRunner::class.java) {})
 
             // ========================================
             // Info runners (show setup instructions)

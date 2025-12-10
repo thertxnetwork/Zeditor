@@ -2,6 +2,7 @@ package com.rk.runner.runners.languages
 
 import android.content.Context
 import android.graphics.drawable.Drawable
+import bsh.Interpreter
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.resources.drawables
@@ -15,33 +16,34 @@ import java.io.PrintStream
 import java.lang.ref.WeakReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.luaj.vm2.Globals
-import org.luaj.vm2.LuaError
-import org.luaj.vm2.lib.jse.JsePlatform
 
 /**
- * Lua language runner using LuaJ (pure Java implementation).
+ * Java language runner using BeanShell (pure Java interpreter).
  *
  * Features:
- * - Full Lua 5.2 support
+ * - Run Java code without compilation
+ * - Script-style Java execution
  * - No JNI/NDK required (pure JVM)
- * - Direct Java interop
- * - Complete standard library
+ * - Dynamic Java scripting
+ * - Access to Java standard library
  *
- * Recommended by: https://github.com/luaj/luaj
+ * BeanShell allows running Java code in a scripting mode, making it perfect
+ * for quick prototyping and testing Java code snippets.
+ *
+ * Recommended for: Java snippets, quick testing, scripting tasks
  */
-class LuaRunner : LanguageRunner() {
+class JavaRunner : LanguageRunner() {
 
-    private var globals: Globals? = null
+    private var interpreter: Interpreter? = null
 
-    override fun getLanguageName(): String = "Lua"
+    override fun getLanguageName(): String = "Java"
 
-    override fun getSupportedExtensions(): List<String> = listOf("lua")
+    override fun getSupportedExtensions(): List<String> = listOf("java", "bsh")
 
-    override fun getName(): String = "Lua (LuaJ)"
+    override fun getName(): String = "Java (BeanShell)"
 
     override fun getIcon(context: Context): Drawable? {
-        return drawables.run.getDrawable(context)
+        return drawables.ic_language_java.getDrawable(context)
     }
 
     override suspend fun run(context: Context, fileObject: FileObject) {
@@ -71,45 +73,55 @@ class LuaRunner : LanguageRunner() {
             val errorStream = ByteArrayOutputStream()
             val printStream = PrintStream(outputStream)
             val errorPrintStream = PrintStream(errorStream)
+            val originalOut = System.out
+            val originalErr = System.err
 
             try {
-                globals = JsePlatform.standardGlobals()
-                globals?.let { g ->
-                    g.STDOUT = printStream
-                    g.STDERR = errorPrintStream
+                interpreter = Interpreter()
+                interpreter?.let { interp ->
+                    // Redirect output streams
+                    System.setOut(printStream)
+                    System.setErr(errorPrintStream)
 
-                    val chunk = g.load(code)
-                    chunk.call()
+                    // Set output streams in BeanShell
+                    interp.setOut(printStream)
+                    interp.setErr(errorPrintStream)
+
+                    // Evaluate the code
+                    val result = interp.eval(code)
+
+                    System.setOut(originalOut)
+                    System.setErr(originalErr)
 
                     val executionTime = System.currentTimeMillis() - startTime
                     val output = outputStream.toString("UTF-8")
                     val errorOutput = errorStream.toString("UTF-8")
 
+                    val finalOutput = when {
+                        output.isNotEmpty() -> output
+                        result != null -> result.toString()
+                        else -> "(Execution completed in ${executionTime}ms)"
+                    }
+
                     ExecutionResult(
-                        output = output.ifEmpty { "(Execution completed in ${executionTime}ms)" },
+                        output = finalOutput,
                         errorOutput = errorOutput,
-                        isSuccess = true,
+                        isSuccess = errorOutput.isEmpty(),
                         executionTimeMs = executionTime
                     )
                 } ?: ExecutionResult(
                     output = "",
-                    errorOutput = "Failed to initialize Lua context",
+                    errorOutput = "Failed to initialize BeanShell interpreter",
                     isSuccess = false,
                     executionTimeMs = 0
                 )
-            } catch (e: LuaError) {
-                val executionTime = System.currentTimeMillis() - startTime
-                ExecutionResult(
-                    output = outputStream.toString("UTF-8"),
-                    errorOutput = "Lua Error: ${e.message}",
-                    isSuccess = false,
-                    executionTimeMs = executionTime
-                )
             } catch (e: Exception) {
+                System.setOut(originalOut)
+                System.setErr(originalErr)
                 val executionTime = System.currentTimeMillis() - startTime
                 ExecutionResult(
                     output = outputStream.toString("UTF-8"),
-                    errorOutput = "Error: ${e.message}",
+                    errorOutput = "Java Error: ${e.message}",
                     isSuccess = false,
                     executionTimeMs = executionTime
                 )
@@ -124,6 +136,6 @@ class LuaRunner : LanguageRunner() {
 
     override suspend fun stop() {
         super.stop()
-        globals = null
+        interpreter = null
     }
 }

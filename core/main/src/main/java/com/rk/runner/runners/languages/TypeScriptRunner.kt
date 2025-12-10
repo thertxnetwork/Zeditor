@@ -59,22 +59,18 @@ class TypeScriptRunner : LanguageRunner() {
         val result = executeCode(code)
 
         withContext(Dispatchers.Main) {
-            if (result.isSuccess) {
-                dialog(
-                    title = "TypeScript Output",
-                    msg = if (result.output.isNotEmpty()) result.output else "(No output)",
-                    onOk = {}
+            // Add note about TypeScript limitations if there's a syntax error
+            val updatedResult = if (!result.isSuccess && 
+                (result.errorOutput.contains("syntax error") || result.errorOutput.contains("Unexpected"))) {
+                result.copy(
+                    errorOutput = result.errorOutput + 
+                        "\n\nNote: TypeScript type annotations are not supported." +
+                        "\nFor full TypeScript, use Termux with ts-node."
                 )
             } else {
-                val errorMsg = buildString {
-                    append(result.errorOutput.ifEmpty { result.output })
-                    if (result.errorOutput.contains("syntax error") || result.errorOutput.contains("Unexpected")) {
-                        append("\n\nNote: TypeScript type annotations are not supported.")
-                        append("\nFor full TypeScript, use Termux with ts-node.")
-                    }
-                }
-                dialog(title = "TypeScript Error", msg = errorMsg, onOk = {})
+                result
             }
+            showExecutionResult(context, updatedResult, fileObject.getName())
         }
 
         isCurrentlyRunning = false

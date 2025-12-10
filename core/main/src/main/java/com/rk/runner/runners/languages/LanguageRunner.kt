@@ -1,8 +1,11 @@
 package com.rk.runner.runners.languages
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.drawable.Drawable
 import com.rk.file.FileObject
+import com.rk.runner.ExecutionResultData
+import com.rk.runner.ExecutionActivity
 import com.rk.runner.RunnerImpl
 
 /**
@@ -42,6 +45,24 @@ abstract class LanguageRunner : RunnerImpl() {
     fun canHandle(fileObject: FileObject): Boolean {
         val extension = fileObject.getName().substringAfterLast('.', "")
         return getSupportedExtensions().contains(extension)
+    }
+
+    /**
+     * Show execution result in ExecutionActivity
+     */
+    protected fun showExecutionResult(context: Context, result: ExecutionResult, fileName: String) {
+        val intent = Intent(context, ExecutionActivity::class.java).apply {
+            putExtra("execution_result", ExecutionResultData(
+                languageName = getLanguageName(),
+                fileName = fileName,
+                output = result.output,
+                errorOutput = result.errorOutput,
+                isSuccess = result.isSuccess,
+                executionTimeMs = result.executionTimeMs
+            ))
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
     }
 }
 
