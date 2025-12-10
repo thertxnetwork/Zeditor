@@ -142,7 +142,7 @@ enum class FileType(
         title = "Python",
         markdownNames = listOf("python"),
     ),
-    JAVA(extensions = listOf("java", "jav", "bsh"), textmateScope = "source.java", icon = java, title = "Java"),
+    JAVA(extensions = listOf("java", "jav"), textmateScope = "source.java", icon = java, title = "Java"),
     GROOVY(
         extensions = listOf("gsh", "groovy", "gradle", "gvy", "gy"),
         textmateScope = "source.groovy",
