@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import com.rk.file.FileObject
 import com.rk.runner.runners.languages.ClojureRunner
+import com.rk.runner.runners.languages.CommonLispRunner
 import com.rk.runner.runners.languages.CppRunner
 import com.rk.runner.runners.languages.GoActualRunner
 import com.rk.runner.runners.languages.GroovyRunner
@@ -15,6 +16,7 @@ import com.rk.runner.runners.languages.LuaRunner
 import com.rk.runner.runners.languages.PerlRunner
 import com.rk.runner.runners.languages.PhpQuercusRunner
 import com.rk.runner.runners.languages.PhpRunner
+import com.rk.runner.runners.languages.PrologRunner
 import com.rk.runner.runners.languages.PythonJythonRunner
 import com.rk.runner.runners.languages.PythonRunner
 import com.rk.runner.runners.languages.RLangRunner
@@ -102,6 +104,12 @@ object Runner {
 
             // Go - Attempts to run via system Go compiler if available
             add(object : RunnerBuilder(regex = Regex(".*\\.go$"), clazz = GoActualRunner::class.java) {})
+
+            // Common Lisp - ABCL (Full Common Lisp on JVM)
+            add(object : RunnerBuilder(regex = Regex(".*\\.(lisp|lsp|cl)$"), clazz = CommonLispRunner::class.java) {})
+
+            // Prolog - tuProlog (Full Prolog on JVM)
+            add(object : RunnerBuilder(regex = Regex(".*\\.(pl|pro|prolog)$"), clazz = PrologRunner::class.java) {})
 
             // ========================================
             // Info runners (show setup instructions for languages that need native compilers)

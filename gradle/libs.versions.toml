@@ -13,6 +13,8 @@ jruby = "9.4.8.0"
 scala = "2.13.15"
 kotlinScripting = "2.1.0"
 quercus = "4.0.39"
+abcl = "1.9.2"
+tuprolog = "3.3.0"
 appcompat = "1.7.1"
 browser = "1.9.0"
 commonsNet = "3.12.0"
@@ -145,6 +147,9 @@ scala-compiler = { module = "org.scala-lang:scala-compiler", version.ref = "scal
 kotlin-scripting-jvm = { module = "org.jetbrains.kotlin:kotlin-scripting-jvm", version.ref = "kotlinScripting" }
 kotlin-scripting-jvm-host = { module = "org.jetbrains.kotlin:kotlin-scripting-jvm-host", version.ref = "kotlinScripting" }
 quercus = { module = "com.caucho:quercus", version.ref = "quercus" }
+abcl = { module = "org.abcl:abcl", version.ref = "abcl" }
+tuprolog-core = { module = "it.unibo.tuprolog:core-jvm", version.ref = "tuprolog" }
+tuprolog-solve-classic = { module = "it.unibo.tuprolog:solve-classic-jvm", version.ref = "tuprolog" }
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }

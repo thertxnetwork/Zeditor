@@ -123,6 +123,9 @@ dependencies {
     implementation(libs.kotlin.scripting.jvm)      // Kotlin scripting (JVM)
     implementation(libs.kotlin.scripting.jvm.host) // Kotlin scripting host (JVM)
     implementation(libs.quercus)           // PHP/Quercus interpreter (JVM)
+    implementation(libs.abcl)              // Common Lisp/ABCL interpreter (JVM)
+    implementation(libs.tuprolog.core)     // Prolog/tuProlog core (JVM)
+    implementation(libs.tuprolog.solve.classic) // Prolog/tuProlog solver (JVM)
     // implementation("androidx.compose.material:material-icons-extended:1.7.8")
 
     // Modules
