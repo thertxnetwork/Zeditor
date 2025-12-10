@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateListOf
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.rk.DefaultScope
-import com.rk.exec.TerminalCommand
 import com.rk.file.FileObject
 import com.rk.file.child
 import com.rk.file.createFileIfNot
@@ -14,7 +13,6 @@ import com.rk.file.localDir
 import com.rk.file.runnerDir
 import com.rk.resources.drawables
 import com.rk.resources.getDrawable
-import com.rk.resources.strings
 import com.rk.utils.errorDialog
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -70,19 +68,8 @@ object ShellBasedRunners {
 
 data class ShellBasedRunner(private val name: String, val regex: String) : RunnerImpl() {
     override suspend fun run(context: Context, fileObject: FileObject) {
-        val scriptFile = getScript()
-        val workDir = fileObject.getParentFile()?.getAbsolutePath() ?: context.filesDir.absolutePath
-        val filePath = fileObject.getAbsolutePath()
-        
-        // Launch terminal with custom script
-        val intent = android.content.Intent(context, com.rk.terminal.TerminalActivity::class.java).apply {
-            putExtra(com.rk.terminal.TerminalActivity.EXTRA_COMMAND, "/system/bin/sh")
-            putExtra(com.rk.terminal.TerminalActivity.EXTRA_ARGS, arrayOf(scriptFile.absolutePath, filePath))
-            putExtra(com.rk.terminal.TerminalActivity.EXTRA_WORKDIR, workDir)
-            putExtra(com.rk.terminal.TerminalActivity.EXTRA_TITLE, "${name}: ${fileObject.getName()}")
-        }
-        
-        context.startActivity(intent)
+        // Terminal feature has been removed
+        errorDialog("Terminal feature is not available. Script execution requires a terminal.")
     }
 
     override fun getName(): String {

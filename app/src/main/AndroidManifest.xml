@@ -92,10 +92,5 @@
         <activity
             android:name="com.rk.runner.runners.web.WebActivity"
             android:exported="false" />
-        <activity
-            android:name="com.rk.terminal.TerminalActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustPan"
-            android:theme="@style/Theme.Karbon" />
     </application>
 </manifest>
