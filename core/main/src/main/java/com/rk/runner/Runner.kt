@@ -6,7 +6,6 @@ import com.rk.file.FileObject
 import com.rk.runner.runners.languages.CppRunner
 import com.rk.runner.runners.languages.GoRunner
 import com.rk.runner.runners.languages.GroovyRunner
-import com.rk.runner.runners.languages.JavaRunner
 import com.rk.runner.runners.languages.JavaScriptRunner
 import com.rk.runner.runners.languages.KotlinScriptRunner
 import com.rk.runner.runners.languages.LuaRunner
@@ -65,9 +64,6 @@ object Runner {
 
             // TypeScript - Rhino with basic transpilation
             add(object : RunnerBuilder(regex = Regex(".*\\.ts$"), clazz = TypeScriptRunner::class.java) {})
-
-            // Java - BeanShell (Java scripting without compilation)
-            add(object : RunnerBuilder(regex = Regex(".*\\.(java|bsh)$"), clazz = JavaRunner::class.java) {})
 
             // Groovy - Full Groovy on JVM
             add(object : RunnerBuilder(regex = Regex(".*\\.(groovy|gvy|gy|gsh)$"), clazz = GroovyRunner::class.java) {})
