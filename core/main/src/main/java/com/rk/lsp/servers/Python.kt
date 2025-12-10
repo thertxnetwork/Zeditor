@@ -1,12 +1,8 @@
 package com.rk.lsp.servers
 
 import android.content.Context
-import com.rk.exec.TerminalCommand
 import com.rk.file.FileObject
 import com.rk.file.FileType
-import com.rk.file.child
-import com.rk.file.localBinDir
-import com.rk.file.sandboxHomeDir
 import com.rk.lsp.BaseLspConnector
 import com.rk.lsp.BaseLspServer
 import com.rk.lsp.LspConnectionConfig
