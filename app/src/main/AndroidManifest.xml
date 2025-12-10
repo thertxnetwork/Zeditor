@@ -92,5 +92,8 @@
         <activity
             android:name="com.rk.runner.runners.web.WebActivity"
             android:exported="false" />
+        <activity
+            android:name="com.rk.runner.runners.code.CodeRunnerActivity"
+            android:exported="false" />
     </application>
 </manifest>

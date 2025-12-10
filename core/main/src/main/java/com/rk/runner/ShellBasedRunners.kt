@@ -1,19 +1,21 @@
 package com.rk.runner
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.drawable.Drawable
 import androidx.compose.runtime.mutableStateListOf
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.rk.DefaultScope
 import com.rk.file.FileObject
+import com.rk.file.FileWrapper
 import com.rk.file.child
 import com.rk.file.createFileIfNot
 import com.rk.file.localDir
 import com.rk.file.runnerDir
 import com.rk.resources.drawables
 import com.rk.resources.getDrawable
-import com.rk.utils.errorDialog
+import com.rk.runner.runners.code.CodeRunnerActivity
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -68,8 +70,15 @@ object ShellBasedRunners {
 
 data class ShellBasedRunner(private val name: String, val regex: String) : RunnerImpl() {
     override suspend fun run(context: Context, fileObject: FileObject) {
-        // Terminal feature has been removed
-        errorDialog("Terminal feature is not available. Script execution requires a terminal.")
+        // Get the script file for this runner
+        val scriptFile = getScript()
+        
+        // Launch CodeRunnerActivity to execute the script
+        val intent = Intent(context, CodeRunnerActivity::class.java).apply {
+            putExtra(CodeRunnerActivity.EXTRA_FILE_PATH, scriptFile.absolutePath)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
     }
 
     override fun getName(): String {

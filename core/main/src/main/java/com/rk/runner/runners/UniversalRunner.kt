@@ -2,9 +2,8 @@ package com.rk.runner.runners
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.graphics.drawable.Drawable
-import android.os.Environment
-import com.rk.DefaultScope
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.resources.drawables
@@ -12,9 +11,9 @@ import com.rk.resources.getDrawable
 import com.rk.resources.getString
 import com.rk.resources.strings
 import com.rk.runner.RunnerImpl
+import com.rk.runner.runners.code.CodeExecutor
+import com.rk.runner.runners.code.CodeRunnerActivity
 import com.rk.utils.dialog
-import com.rk.utils.errorDialog
-import kotlinx.coroutines.launch
 
 class UniversalRunner : RunnerImpl() {
     
@@ -25,8 +24,22 @@ class UniversalRunner : RunnerImpl() {
             return
         }
 
-        // Terminal feature has been removed
-        errorDialog("Terminal feature is not available. Code execution requires a terminal.")
+        // Check if the file type is supported
+        if (!CodeExecutor.canExecute(fileObject)) {
+            dialog(
+                title = strings.attention.getString(),
+                msg = "Unsupported file type: ${fileObject.getName()}",
+                onOk = {}
+            )
+            return
+        }
+
+        // Launch the CodeRunnerActivity to execute the file
+        val intent = Intent(context, CodeRunnerActivity::class.java).apply {
+            putExtra(CodeRunnerActivity.EXTRA_FILE_PATH, fileObject.getAbsolutePath())
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
     }
 
     override fun getName(): String {

@@ -496,4 +496,9 @@
     <string name="lsp_terminal_unavailable">LSP language features will not work because the terminal environment is unavailable or not functioning.</string>
     <string name="invalid_intent">Received invalid intent:\n%s</string>
     <string name="add_parent_command">Add parent command</string>
+    <string name="output">Output</string>
+    <string name="code_runner">Code Runner</string>
+    <string name="no_interpreter_found">No %s interpreter found. Please install %s (e.g., via Termux) to run this file.</string>
+    <string name="execution_timeout">Execution timed out after %d seconds</string>
+    <string name="execution_failed">Execution failed: %s</string>
 </resources>
