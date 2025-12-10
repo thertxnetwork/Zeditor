@@ -17,13 +17,12 @@ import com.rk.runner.runners.languages.PerlRunner
 import com.rk.runner.runners.languages.PhpNativeRunner
 import com.rk.runner.runners.languages.PhpRunner
 import com.rk.runner.runners.languages.PrologRunner
-import com.rk.runner.runners.languages.PythonJythonRunner
+import com.rk.runner.runners.languages.PythonNativeRunner
 import com.rk.runner.runners.languages.PythonRunner
 import com.rk.runner.runners.languages.RLangRunner
-import com.rk.runner.runners.languages.RubyJRubyRunner
+import com.rk.runner.runners.languages.RubyNativeRunner
 import com.rk.runner.runners.languages.RubyRunner
 import com.rk.runner.runners.languages.RustRunner
-import com.rk.runner.runners.languages.ScalaRunner
 import com.rk.runner.runners.languages.SchemeRunner
 import com.rk.runner.runners.languages.ShellRunner
 import com.rk.runner.runners.languages.TypeScriptRunner
@@ -84,23 +83,24 @@ object Runner {
             // Clojure - Full Clojure on JVM
             add(object : RunnerBuilder(regex = Regex(".*\\.(clj|cljs|cljc)$"), clazz = ClojureRunner::class.java) {})
 
-            // Python - Jython (Full Python 2.7 on JVM)
-            add(object : RunnerBuilder(regex = Regex(".*\\.py$"), clazz = PythonJythonRunner::class.java) {})
-
-            // Ruby - JRuby (Full Ruby 3.x on JVM)
-            add(object : RunnerBuilder(regex = Regex(".*\\.rb$"), clazz = RubyJRubyRunner::class.java) {})
-
-            // Scala - Full Scala on JVM
-            add(object : RunnerBuilder(regex = Regex(".*\\.(scala|sc)$"), clazz = ScalaRunner::class.java) {})
-
             // Kotlin Script - Full Kotlin scripting support
             add(object : RunnerBuilder(regex = Regex(".*\\.kts$"), clazz = KotlinScriptActualRunner::class.java) {})
 
-            // Go - Attempts to run via system Go compiler if available
-            add(object : RunnerBuilder(regex = Regex(".*\\.go$"), clazz = GoActualRunner::class.java) {})
+            // ========================================
+            // Native/System-based runners (execute via system interpreters)
+            // ========================================
 
-            // PHP - Native PHP via system interpreter (Termux)
+            // Python - Native via system interpreter (Termux)
+            add(object : RunnerBuilder(regex = Regex(".*\\.py$"), clazz = PythonNativeRunner::class.java) {})
+
+            // Ruby - Native via system interpreter (Termux)
+            add(object : RunnerBuilder(regex = Regex(".*\\.rb$"), clazz = RubyNativeRunner::class.java) {})
+
+            // PHP - Native via system interpreter (Termux)
             add(object : RunnerBuilder(regex = Regex(".*\\.php$"), clazz = PhpNativeRunner::class.java) {})
+
+            // Go - Native via system compiler (Termux)
+            add(object : RunnerBuilder(regex = Regex(".*\\.go$"), clazz = GoActualRunner::class.java) {})
 
             // ========================================
             // Info runners (show setup instructions for languages that need native compilers)

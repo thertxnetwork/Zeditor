@@ -36,38 +36,13 @@ These languages have **complete working implementations** that can execute code 
 - **Features**: Script-style Java execution, no compilation needed
 - **Performance**: ⭐⭐⭐
 
-### 6. **Python** (Jython 2.7)
-- **Extensions**: `.py`
-- **Implementation**: Jython (JVM)
-- **Features**: Full Python 2.7, Java interop, Python standard library
-- **Performance**: ⭐⭐⭐
-- **Note**: Python 2.7 compatible. For Python 3.x, use external tools like Chaquopy.
-
-### 7. **Ruby** (JRuby 3.x)
-- **Extensions**: `.rb`
-- **Implementation**: JRuby (JVM)
-- **Features**: Full Ruby 3.x, Java interop, Ruby gems support
-- **Performance**: ⭐⭐⭐⭐
-
-### 8. **PHP** (Native/System)
-- **Extensions**: `.php`
-- **Implementation**: Native PHP via system interpreter (Termux)
-- **Features**: Full PHP if interpreter installed, otherwise shows setup guide
-- **Performance**: ⭐⭐⭐⭐⭐ (if available)
-
-### 9. **Scala** (Full)
-- **Extensions**: `.scala`, `.sc`
-- **Implementation**: Scala REPL (JVM)
-- **Features**: Full Scala, functional + OOP, type safety
-- **Performance**: ⭐⭐⭐⭐
-
-### 10. **Kotlin Script** (Native Android)
+### 6. **Kotlin Script** (Native Android)
 - **Extensions**: `.kts`
 - **Implementation**: Kotlin Scripting Host (JVM)
 - **Features**: Full Kotlin scripting, coroutines, native Android support
 - **Performance**: ⭐⭐⭐⭐⭐
 
-### 11. **Clojure** (Full)
+### 7. **Clojure** (Full)
 - **Extensions**: `.clj`, `.cljs`, `.cljc`
 - **Implementation**: Clojure (JVM)
 - **Features**: Full Clojure, functional programming, immutable data structures
@@ -77,15 +52,27 @@ These languages have **complete working implementations** that can execute code 
 
 ## 🔧 Native/System-Based Languages
 
-These languages attempt execution via system compilers/interpreters if available:
+These languages execute via system interpreters/compilers (Termux). They provide native performance without JVM overhead:
 
-### 12. **PHP** (Native/System)
-- **Extensions**: `.php`
-- **Implementation**: System PHP interpreter (if installed via Termux)
-- **Features**: Full PHP if interpreter available, otherwise shows installation guide
+### 8. **Python** (Native/System)
+- **Extensions**: `.py`
+- **Implementation**: System Python interpreter (Termux)
+- **Features**: Full Python 3.x support via native execution
 - **Performance**: ⭐⭐⭐⭐⭐ (if available)
 
-### 13. **Go** (System Compiler)
+### 9. **Ruby** (Native/System)
+- **Extensions**: `.rb`
+- **Implementation**: System Ruby interpreter (Termux)
+- **Features**: Full Ruby 3.x support via native execution
+- **Performance**: ⭐⭐⭐⭐⭐ (if available)
+
+### 10. **PHP** (Native/System)
+- **Extensions**: `.php`
+- **Implementation**: System PHP interpreter (Termux)
+- **Features**: Full PHP support via native execution
+- **Performance**: ⭐⭐⭐⭐⭐ (if available)
+
+### 11. **Go** (System Compiler)
 - **Extensions**: `.go`
 - **Implementation**: System Go compiler (if installed via Termux)
 - **Features**: Full Go if compiler available, otherwise shows installation guide
@@ -147,9 +134,9 @@ These languages show installation and setup information (require native compiler
 ## 📊 Summary Statistics
 
 - **Total Languages Supported**: 24+
-- **Fully Executable (JVM)**: 11 languages
-- **System-Based Execution**: 2 languages (Go, PHP)
-- **Info/Guide Only**: 9 languages
+- **Fully Executable (JVM)**: 7 languages (lightweight, stable)
+- **System-Based Execution**: 4 languages (Python, Ruby, PHP, Go - native performance)
+- **Info/Guide Only**: 11 languages
 - **Web/Preview**: 2 languages
 
 ## 🚀 New Execution UI
@@ -168,21 +155,21 @@ All language runners now use the new **ExecutionActivity** instead of simple dia
 
 From the problem statement requirements, we have implemented:
 
-✅ **Python** - Jython 2.7 (JVM)
 ✅ **JavaScript** - Rhino ES5/ES6 (JVM)
 ✅ **Lua** - LuaJ 5.2 (JVM)
-✅ **Ruby** - JRuby 3.x (JVM)
-✅ **PHP** - Native via system interpreter (Termux)
 ✅ **Kotlin** - Native Android + Scripting (JVM)
 ✅ **Java** - BeanShell (JVM)
-✅ **Scala** - Full Scala (JVM)
 ✅ **Groovy** - Full Groovy (JVM)
 ✅ **Clojure** - Full Clojure (JVM)
-✅ **Go** - System compiler (if available)
+✅ **Python** - Native via system interpreter (Termux)
+✅ **Ruby** - Native via system interpreter (Termux)
+✅ **PHP** - Native via system interpreter (Termux)
+✅ **Go** - Native via system compiler (Termux)
 📋 **C/C++** - Info guide (requires NDK)
 📋 **Rust** - Info guide (requires cargo-ndk)
 📋 **Perl** - Info guide (requires Termux)
 📋 **R** - Info guide (requires Termux/Renjin)
+📋 **Scala** - Info guide (removed due to conflicts)
 📋 **Scheme** - Info guide (Kawa not in Maven)
 📋 **Prolog** - Info guide (tuProlog not in Maven)
 📋 **Common Lisp** - Info guide (ABCL compatibility issues)
