@@ -116,6 +116,13 @@ dependencies {
     implementation(libs.beanshell)     // Java/BeanShell interpreter (JVM)
     implementation(libs.clojure)       // Clojure interpreter (JVM)
     implementation(libs.kawa)          // Scheme/Kawa interpreter (JVM)
+    implementation(libs.jython.standalone) // Python/Jython interpreter (JVM)
+    implementation(libs.jruby.complete)    // Ruby/JRuby interpreter (JVM)
+    implementation(libs.scala.library)     // Scala library (JVM)
+    implementation(libs.scala.compiler)    // Scala compiler (JVM)
+    implementation(libs.kotlin.scripting.jvm)      // Kotlin scripting (JVM)
+    implementation(libs.kotlin.scripting.jvm.host) // Kotlin scripting host (JVM)
+    implementation(libs.quercus)           // PHP/Quercus interpreter (JVM)
     // implementation("androidx.compose.material:material-icons-extended:1.7.8")
 
     // Modules

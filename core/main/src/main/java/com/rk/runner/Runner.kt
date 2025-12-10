@@ -5,18 +5,23 @@ import android.graphics.drawable.Drawable
 import com.rk.file.FileObject
 import com.rk.runner.runners.languages.ClojureRunner
 import com.rk.runner.runners.languages.CppRunner
-import com.rk.runner.runners.languages.GoRunner
+import com.rk.runner.runners.languages.GoActualRunner
 import com.rk.runner.runners.languages.GroovyRunner
 import com.rk.runner.runners.languages.JavaRunner
 import com.rk.runner.runners.languages.JavaScriptRunner
+import com.rk.runner.runners.languages.KotlinScriptActualRunner
 import com.rk.runner.runners.languages.KotlinScriptRunner
 import com.rk.runner.runners.languages.LuaRunner
 import com.rk.runner.runners.languages.PerlRunner
+import com.rk.runner.runners.languages.PhpQuercusRunner
 import com.rk.runner.runners.languages.PhpRunner
+import com.rk.runner.runners.languages.PythonJythonRunner
 import com.rk.runner.runners.languages.PythonRunner
 import com.rk.runner.runners.languages.RLangRunner
+import com.rk.runner.runners.languages.RubyJRubyRunner
 import com.rk.runner.runners.languages.RubyRunner
 import com.rk.runner.runners.languages.RustRunner
+import com.rk.runner.runners.languages.ScalaRunner
 import com.rk.runner.runners.languages.SchemeRunner
 import com.rk.runner.runners.languages.ShellRunner
 import com.rk.runner.runners.languages.TypeScriptRunner
@@ -80,12 +85,27 @@ object Runner {
             // Scheme - Kawa (Full Scheme R7RS on JVM)
             add(object : RunnerBuilder(regex = Regex(".*\\.(scm|ss|sch)$"), clazz = SchemeRunner::class.java) {})
 
-            // ========================================
-            // Info runners (show setup instructions)
-            // ========================================
+            // Python - Jython (Full Python 2.7 on JVM)
+            add(object : RunnerBuilder(regex = Regex(".*\\.py$"), clazz = PythonJythonRunner::class.java) {})
 
-            // Python - Info about Chaquopy, p4a, Termux
-            add(object : RunnerBuilder(regex = Regex(".*\\.py$"), clazz = PythonRunner::class.java) {})
+            // Ruby - JRuby (Full Ruby 3.x on JVM)
+            add(object : RunnerBuilder(regex = Regex(".*\\.rb$"), clazz = RubyJRubyRunner::class.java) {})
+
+            // PHP - Quercus (Full PHP on JVM)
+            add(object : RunnerBuilder(regex = Regex(".*\\.php$"), clazz = PhpQuercusRunner::class.java) {})
+
+            // Scala - Full Scala on JVM
+            add(object : RunnerBuilder(regex = Regex(".*\\.(scala|sc)$"), clazz = ScalaRunner::class.java) {})
+
+            // Kotlin Script - Full Kotlin scripting support
+            add(object : RunnerBuilder(regex = Regex(".*\\.kts$"), clazz = KotlinScriptActualRunner::class.java) {})
+
+            // Go - Attempts to run via system Go compiler if available
+            add(object : RunnerBuilder(regex = Regex(".*\\.go$"), clazz = GoActualRunner::class.java) {})
+
+            // ========================================
+            // Info runners (show setup instructions for languages that need native compilers)
+            // ========================================
 
             // C/C++ - Info about NDK, Termux
             add(
@@ -93,20 +113,11 @@ object Runner {
                     RunnerBuilder(regex = Regex(".*\\.(c|cpp|cc|cxx|h|hpp)$"), clazz = CppRunner::class.java) {}
             )
 
-            // Go - Info about gomobile, Termux
-            add(object : RunnerBuilder(regex = Regex(".*\\.go$"), clazz = GoRunner::class.java) {})
-
             // Rust - Info about cargo-ndk, Termux
             add(object : RunnerBuilder(regex = Regex(".*\\.rs$"), clazz = RustRunner::class.java) {})
 
-            // PHP - Info about php-java-bridge, Termux
-            add(object : RunnerBuilder(regex = Regex(".*\\.php$"), clazz = PhpRunner::class.java) {})
-
-            // Ruby - Info about JRuby, mruby, Termux
-            add(object : RunnerBuilder(regex = Regex(".*\\.rb$"), clazz = RubyRunner::class.java) {})
-
-            // Kotlin - Info about Android native, scripting
-            add(object : RunnerBuilder(regex = Regex(".*\\.(kt|kts)$"), clazz = KotlinScriptRunner::class.java) {})
+            // Kotlin (non-script) - Info about Android native, compilation
+            add(object : RunnerBuilder(regex = Regex(".*\\.kt$"), clazz = KotlinScriptRunner::class.java) {})
 
             // Shell scripts - Info about Termux, ADB
             add(

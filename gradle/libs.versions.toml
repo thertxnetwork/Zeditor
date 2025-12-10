@@ -8,6 +8,11 @@ groovy = "3.0.19"
 beanshell = "2.0b6"
 clojure = "1.11.1"
 kawa = "3.1.1"
+jython = "2.7.4"
+jruby = "9.4.8.0"
+scala = "2.13.15"
+kotlinScripting = "2.1.0"
+quercus = "4.0.39"
 appcompat = "1.7.1"
 browser = "1.9.0"
 commonsNet = "3.12.0"
@@ -133,6 +138,13 @@ groovy = { module = "org.codehaus.groovy:groovy", version.ref = "groovy" }
 beanshell = { module = "org.apache-extras.beanshell:bsh", version.ref = "beanshell" }
 clojure = { module = "org.clojure:clojure", version.ref = "clojure" }
 kawa = { module = "gnu.kawa:kawa", version.ref = "kawa" }
+jython-standalone = { module = "org.python:jython-standalone", version.ref = "jython" }
+jruby-complete = { module = "org.jruby:jruby-complete", version.ref = "jruby" }
+scala-library = { module = "org.scala-lang:scala-library", version.ref = "scala" }
+scala-compiler = { module = "org.scala-lang:scala-compiler", version.ref = "scala" }
+kotlin-scripting-jvm = { module = "org.jetbrains.kotlin:kotlin-scripting-jvm", version.ref = "kotlinScripting" }
+kotlin-scripting-jvm-host = { module = "org.jetbrains.kotlin:kotlin-scripting-jvm-host", version.ref = "kotlinScripting" }
+quercus = { module = "com.caucho:quercus", version.ref = "quercus" }
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
