@@ -305,7 +305,9 @@ class TerminalActivity : AppCompatActivity() {
         val args = command.drop(1).toTypedArray()
         val env = environment // Already in "KEY=VALUE" format from getEnvironment()
         
-        createTerminalSession(shellPath, args, env, bootstrap.rootfsPath.absolutePath)
+        // Use the app's files directory as working directory for the proot process
+        // PRoot's --cwd flag will handle the working directory inside the guest
+        createTerminalSession(shellPath, args, env, filesDir.absolutePath)
     }
     
     private fun setupExtraKeys() {
