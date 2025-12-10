@@ -556,3 +556,150 @@ class RLangRunner : RunnerImpl() {
 
     override suspend fun stop() {}
 }
+
+/**
+ * Scheme runner - Shows information about running Scheme on Android.
+ */
+class SchemeRunner : RunnerImpl() {
+
+    override fun getName(): String = "Scheme Info"
+
+    override fun getIcon(context: Context): Drawable? {
+        return drawables.run.getDrawable(context)
+    }
+
+    override suspend fun run(context: Context, fileObject: FileObject) {
+        if (fileObject !is FileWrapper) {
+            dialog(title = strings.attention.getString(), msg = strings.non_native_filetype.getString(), onOk = {})
+            return
+        }
+
+        currentRunner = WeakReference(this)
+
+        val message =
+            """
+            Scheme requires a Scheme interpreter to run.
+            
+            Options for running Scheme on Android:
+            
+            1. Kawa (Recommended)
+               - Full Scheme R7RS on JVM
+               - Can be integrated as dependency
+               - Currently not available in Maven Central
+               
+            2. Gambit Scheme (via Termux)
+               - Full Scheme implementation
+               - Install via Termux
+               
+            3. External App
+               - Use dedicated Scheme IDE apps
+            
+            File: ${fileObject.getName()}
+            """
+                .trimIndent()
+
+        withContext(Dispatchers.Main) { dialog(title = "Scheme Runner", msg = message, onOk = {}) }
+    }
+
+    override suspend fun isRunning(): Boolean = false
+
+    override suspend fun stop() {}
+}
+
+/**
+ * Prolog runner - Shows information about running Prolog on Android.
+ */
+class PrologRunner : RunnerImpl() {
+
+    override fun getName(): String = "Prolog Info"
+
+    override fun getIcon(context: Context): Drawable? {
+        return drawables.run.getDrawable(context)
+    }
+
+    override suspend fun run(context: Context, fileObject: FileObject) {
+        if (fileObject !is FileWrapper) {
+            dialog(title = strings.attention.getString(), msg = strings.non_native_filetype.getString(), onOk = {})
+            return
+        }
+
+        currentRunner = WeakReference(this)
+
+        val message =
+            """
+            Prolog requires a Prolog interpreter to run.
+            
+            Options for running Prolog on Android:
+            
+            1. tuProlog
+               - Full Prolog on JVM
+               - Currently version not available in Maven Central
+               - Alternative: Build locally
+               
+            2. SWI-Prolog (via Termux)
+               - Full Prolog implementation
+               - Install via Termux
+               
+            3. External App
+               - Use dedicated Prolog IDE apps
+            
+            File: ${fileObject.getName()}
+            """
+                .trimIndent()
+
+        withContext(Dispatchers.Main) { dialog(title = "Prolog Runner", msg = message, onOk = {}) }
+    }
+
+    override suspend fun isRunning(): Boolean = false
+
+    override suspend fun stop() {}
+}
+
+/**
+ * Common Lisp runner - Shows information about running Common Lisp on Android.
+ */
+class CommonLispRunner : RunnerImpl() {
+
+    override fun getName(): String = "Common Lisp Info"
+
+    override fun getIcon(context: Context): Drawable? {
+        return drawables.run.getDrawable(context)
+    }
+
+    override suspend fun run(context: Context, fileObject: FileObject) {
+        if (fileObject !is FileWrapper) {
+            dialog(title = strings.attention.getString(), msg = strings.non_native_filetype.getString(), onOk = {})
+            return
+        }
+
+        currentRunner = WeakReference(this)
+
+        val message =
+            """
+            Common Lisp requires a Lisp interpreter to run.
+            
+            Options for running Common Lisp on Android:
+            
+            1. ABCL (Armed Bear Common Lisp)
+               - Full Common Lisp on JVM
+               - Can be integrated as dependency
+               - Check Maven Central for latest version
+               
+            2. ECL (via Termux)
+               - Embeddable Common Lisp
+               - Install via Termux
+               
+            3. External App
+               - Use dedicated Lisp IDE apps
+            
+            File: ${fileObject.getName()}
+            """
+                .trimIndent()
+
+        withContext(Dispatchers.Main) { dialog(title = "Common Lisp Runner", msg = message, onOk = {}) }
+    }
+
+    override suspend fun isRunning(): Boolean = false
+
+    override suspend fun stop() {}
+}

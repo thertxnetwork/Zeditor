@@ -49,11 +49,11 @@ These languages have **complete working implementations** that can execute code 
 - **Features**: Full Ruby 3.x, Java interop, Ruby gems support
 - **Performance**: ⭐⭐⭐⭐
 
-### 8. **PHP** (Quercus 5.x)
+### 8. **PHP** (Native/System)
 - **Extensions**: `.php`
-- **Implementation**: Quercus (JVM)
-- **Features**: PHP 5.x compatible, most standard functions
-- **Performance**: ⭐⭐⭐
+- **Implementation**: Native PHP via system interpreter (Termux)
+- **Features**: Full PHP if interpreter installed, otherwise shows setup guide
+- **Performance**: ⭐⭐⭐⭐⭐ (if available)
 
 ### 9. **Scala** (Full)
 - **Extensions**: `.scala`, `.sc`
@@ -73,29 +73,19 @@ These languages have **complete working implementations** that can execute code 
 - **Features**: Full Clojure, functional programming, immutable data structures
 - **Performance**: ⭐⭐⭐⭐
 
-### 12. **Scheme** (Kawa R7RS)
-- **Extensions**: `.scm`, `.ss`, `.sch`
-- **Implementation**: Kawa (JVM)
-- **Features**: Full Scheme R7RS, Lisp family, Java interop
-- **Performance**: ⭐⭐⭐⭐
 
-### 13. **Common Lisp** (ABCL)
-- **Extensions**: `.lisp`, `.lsp`, `.cl`
-- **Implementation**: Armed Bear Common Lisp (JVM)
-- **Features**: ANSI Common Lisp, full Lisp functionality
-- **Performance**: ⭐⭐⭐⭐
-
-### 14. **Prolog** (tuProlog)
-- **Extensions**: `.pl`, `.pro`, `.prolog`
-- **Implementation**: tuProlog (JVM)
-- **Features**: Logic programming, unification, backtracking
-- **Performance**: ⭐⭐⭐⭐
 
 ## 🔧 Native/System-Based Languages
 
-These languages attempt execution via system compilers if available:
+These languages attempt execution via system compilers/interpreters if available:
 
-### 15. **Go** (System Compiler)
+### 12. **PHP** (Native/System)
+- **Extensions**: `.php`
+- **Implementation**: System PHP interpreter (if installed via Termux)
+- **Features**: Full PHP if interpreter available, otherwise shows installation guide
+- **Performance**: ⭐⭐⭐⭐⭐ (if available)
+
+### 13. **Go** (System Compiler)
 - **Extensions**: `.go`
 - **Implementation**: System Go compiler (if installed via Termux)
 - **Features**: Full Go if compiler available, otherwise shows installation guide
@@ -105,46 +95,61 @@ These languages attempt execution via system compilers if available:
 
 These languages show installation and setup information (require native compilers):
 
-### 16. **C/C++** (NDK/Termux)
+### 14. **C/C++** (NDK/Termux)
 - **Extensions**: `.c`, `.cpp`, `.cc`, `.cxx`, `.h`, `.hpp`
 - **Recommendation**: Use Android NDK or Termux with clang/gcc
 
-### 17. **Rust** (cargo-ndk/Termux)
+### 15. **Rust** (cargo-ndk/Termux)
 - **Extensions**: `.rs`
 - **Recommendation**: Use cargo-ndk or Termux with rustc
 
-### 18. **Perl** (Termux)
+### 16. **Perl** (Termux)
 - **Extensions**: `.pl`
 - **Recommendation**: Use Termux with Perl
 
-### 19. **R** (Termux)
+### 17. **R** (Termux)
 - **Extensions**: `.r`, `.R`
 - **Recommendation**: Use Termux with R or Renjin (JVM)
 
-### 20. **Shell Scripts** (Termux)
+### 18. **Shell Scripts** (Termux)
 - **Extensions**: `.sh`, `.bash`, `.zsh`, `.fish`
 - **Recommendation**: Use Termux for bash execution
 
-### 21. **Kotlin** (Android Native - non-script)
+### 19. **Kotlin** (Android Native - non-script)
 - **Extensions**: `.kt`
 - **Recommendation**: Build as Android app with Android Studio
 
+### 20. **Scheme** (Kawa/Termux)
+- **Extensions**: `.scm`, `.ss`, `.sch`
+- **Recommendation**: Kawa not available in Maven Central, use Termux or build locally
+
+### 21. **Prolog** (tuProlog/SWI-Prolog)
+- **Extensions**: `.pl`, `.pro`, `.prolog`
+- **Recommendation**: tuProlog not in standard repos, use SWI-Prolog via Termux
+
+### 22. **Common Lisp** (ABCL/ECL)
+- **Extensions**: `.kt`
+- **Recommendation**: Build as Android app with Android Studio
+
+- **Extensions**: `.lisp`, `.lsp`, `.cl`
+- **Recommendation**: ABCL library available but may have compatibility issues
+
 ## 🎨 Web Languages
 
-### 22. **HTML/SVG** (Built-in Viewer)
+### 23. **HTML/SVG** (Built-in Viewer)
 - **Extensions**: `.html`, `.svg`
 - **Implementation**: Local web server with WebView
 
-### 23. **Markdown** (Built-in Preview)
+### 24. **Markdown** (Built-in Preview)
 - **Extensions**: `.md`
 - **Implementation**: Markdown renderer
 
 ## 📊 Summary Statistics
 
-- **Total Languages Supported**: 23+
-- **Fully Executable (JVM)**: 14 languages
-- **System-Based Execution**: 1 language (Go)
-- **Info/Guide Only**: 6 languages
+- **Total Languages Supported**: 24+
+- **Fully Executable (JVM)**: 11 languages
+- **System-Based Execution**: 2 languages (Go, PHP)
+- **Info/Guide Only**: 9 languages
 - **Web/Preview**: 2 languages
 
 ## 🚀 New Execution UI
@@ -167,20 +172,20 @@ From the problem statement requirements, we have implemented:
 ✅ **JavaScript** - Rhino ES5/ES6 (JVM)
 ✅ **Lua** - LuaJ 5.2 (JVM)
 ✅ **Ruby** - JRuby 3.x (JVM)
-✅ **PHP** - Quercus 5.x (JVM)
+✅ **PHP** - Native via system interpreter (Termux)
 ✅ **Kotlin** - Native Android + Scripting (JVM)
 ✅ **Java** - BeanShell (JVM)
 ✅ **Scala** - Full Scala (JVM)
 ✅ **Groovy** - Full Groovy (JVM)
 ✅ **Clojure** - Full Clojure (JVM)
-✅ **Scheme** - Kawa R7RS (JVM)
-✅ **Common Lisp** - ABCL (JVM)
-✅ **Prolog** - tuProlog (JVM)
 ✅ **Go** - System compiler (if available)
 📋 **C/C++** - Info guide (requires NDK)
 📋 **Rust** - Info guide (requires cargo-ndk)
 📋 **Perl** - Info guide (requires Termux)
 📋 **R** - Info guide (requires Termux/Renjin)
+📋 **Scheme** - Info guide (Kawa not in Maven)
+📋 **Prolog** - Info guide (tuProlog not in Maven)
+📋 **Common Lisp** - Info guide (ABCL compatibility issues)
 
 ## 🎯 Integration Approaches Used
 

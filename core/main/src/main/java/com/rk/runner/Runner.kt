@@ -14,7 +14,7 @@ import com.rk.runner.runners.languages.KotlinScriptActualRunner
 import com.rk.runner.runners.languages.KotlinScriptRunner
 import com.rk.runner.runners.languages.LuaRunner
 import com.rk.runner.runners.languages.PerlRunner
-import com.rk.runner.runners.languages.PhpQuercusRunner
+import com.rk.runner.runners.languages.PhpNativeRunner
 import com.rk.runner.runners.languages.PhpRunner
 import com.rk.runner.runners.languages.PrologRunner
 import com.rk.runner.runners.languages.PythonJythonRunner
@@ -84,17 +84,11 @@ object Runner {
             // Clojure - Full Clojure on JVM
             add(object : RunnerBuilder(regex = Regex(".*\\.(clj|cljs|cljc)$"), clazz = ClojureRunner::class.java) {})
 
-            // Scheme - Kawa (Full Scheme R7RS on JVM)
-            add(object : RunnerBuilder(regex = Regex(".*\\.(scm|ss|sch)$"), clazz = SchemeRunner::class.java) {})
-
             // Python - Jython (Full Python 2.7 on JVM)
             add(object : RunnerBuilder(regex = Regex(".*\\.py$"), clazz = PythonJythonRunner::class.java) {})
 
             // Ruby - JRuby (Full Ruby 3.x on JVM)
             add(object : RunnerBuilder(regex = Regex(".*\\.rb$"), clazz = RubyJRubyRunner::class.java) {})
-
-            // PHP - Quercus (Full PHP on JVM)
-            add(object : RunnerBuilder(regex = Regex(".*\\.php$"), clazz = PhpQuercusRunner::class.java) {})
 
             // Scala - Full Scala on JVM
             add(object : RunnerBuilder(regex = Regex(".*\\.(scala|sc)$"), clazz = ScalaRunner::class.java) {})
@@ -105,11 +99,8 @@ object Runner {
             // Go - Attempts to run via system Go compiler if available
             add(object : RunnerBuilder(regex = Regex(".*\\.go$"), clazz = GoActualRunner::class.java) {})
 
-            // Common Lisp - ABCL (Full Common Lisp on JVM)
-            add(object : RunnerBuilder(regex = Regex(".*\\.(lisp|lsp|cl)$"), clazz = CommonLispRunner::class.java) {})
-
-            // Prolog - tuProlog (Full Prolog on JVM)
-            add(object : RunnerBuilder(regex = Regex(".*\\.(pl|pro|prolog)$"), clazz = PrologRunner::class.java) {})
+            // PHP - Native PHP via system interpreter (Termux)
+            add(object : RunnerBuilder(regex = Regex(".*\\.php$"), clazz = PhpNativeRunner::class.java) {})
 
             // ========================================
             // Info runners (show setup instructions for languages that need native compilers)
@@ -141,6 +132,15 @@ object Runner {
 
             // R - Info about Renjin, Termux
             add(object : RunnerBuilder(regex = Regex(".*\\.(r|R)$"), clazz = RLangRunner::class.java) {})
+
+            // Scheme - Info about Kawa, Termux
+            add(object : RunnerBuilder(regex = Regex(".*\\.(scm|ss|sch)$"), clazz = SchemeRunner::class.java) {})
+
+            // Prolog - Info about tuProlog, SWI-Prolog
+            add(object : RunnerBuilder(regex = Regex(".*\\.(pro|prolog)$"), clazz = PrologRunner::class.java) {})
+
+            // Common Lisp - Info about ABCL, ECL
+            add(object : RunnerBuilder(regex = Regex(".*\\.(lisp|lsp|cl)$"), clazz = CommonLispRunner::class.java) {})
         }
     }
 
