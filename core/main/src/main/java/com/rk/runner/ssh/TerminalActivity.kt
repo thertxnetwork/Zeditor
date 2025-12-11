@@ -93,8 +93,27 @@ fun TerminalScreen(
     var statusText by remember { mutableStateOf("Connecting to ${server.name}...") }
     var isConnected by remember { mutableStateOf(false) }
     var connectionManager by remember { mutableStateOf<SSHConnectionManager?>(null) }
-    var sshTerminalSession by remember { mutableStateOf<SSHTerminalSession?>(null) }
+    var shellChannel by remember { mutableStateOf<ShellChannel?>(null) }
     var terminalView by remember { mutableStateOf<SSHTerminalView?>(null) }
+    
+    // Connect the shell channel to terminal view when both are available
+    LaunchedEffect(shellChannel, terminalView) {
+        val channel = shellChannel
+        val view = terminalView
+        if (channel != null && view != null) {
+            // Set up write callback to send keyboard input to SSH
+            view.setWriteCallback { data ->
+                DefaultScope.launch(Dispatchers.IO) {
+                    try {
+                        channel.outputStream.write(data)
+                        channel.outputStream.flush()
+                    } catch (e: Exception) {
+                        // Ignore write errors
+                    }
+                }
+            }
+        }
+    }
     
     // Connect and set up terminal on start
     LaunchedEffect(Unit) {
@@ -113,20 +132,18 @@ fun TerminalScreen(
                 // Open shell
                 val shellResult = manager.openShell()
                 if (shellResult.isSuccess) {
-                    val shellChannel = shellResult.getOrNull()
+                    val channel = shellResult.getOrNull()
                     
                     withContext(Dispatchers.Main) {
-                        if (shellChannel != null) {
+                        if (channel != null) {
+                            shellChannel = channel
                             isConnected = true
                             statusText = "Shell session started"
-                            
-                            // The terminal view will be created and connected in the AndroidView factory
-                            // Store the shell channel for later use
                         }
                     }
                     
                     // If file path is provided, execute it after a short delay
-                    if (filePath != null && fileName != null && shellChannel != null) {
+                    if (filePath != null && fileName != null && channel != null) {
                         kotlinx.coroutines.delay(500)
                         
                         withContext(Dispatchers.Main) {
@@ -144,8 +161,8 @@ fun TerminalScreen(
                             
                             // Execute based on file extension
                             val command = getExecutionCommand(fileName, remotePath)
-                            shellChannel.outputStream.write("$command\n".toByteArray())
-                            shellChannel.outputStream.flush()
+                            channel.outputStream.write("$command\n".toByteArray())
+                            channel.outputStream.flush()
                         } else {
                             withContext(Dispatchers.Main) {
                                 statusText = "Error uploading file: ${uploadResult.exceptionOrNull()?.message}"
@@ -154,11 +171,11 @@ fun TerminalScreen(
                     }
                     
                     // Start reading from shell and update terminal
-                    if (shellChannel != null) {
+                    if (channel != null) {
                         try {
                             val buffer = ByteArray(4096)
-                            while (shellChannel.isOpen()) {
-                                val bytesRead = shellChannel.inputStream.read(buffer)
+                            while (channel.isOpen()) {
+                                val bytesRead = channel.inputStream.read(buffer)
                                 if (bytesRead > 0) {
                                     val data = buffer.copyOf(bytesRead)
                                     withContext(Dispatchers.Main) {
@@ -193,14 +210,6 @@ fun TerminalScreen(
         onDispose {
             terminalView?.cleanup()
             connectionManager?.disconnect()
-        }
-    }
-    
-    // Get the shell channel for the terminal view
-    val shellChannel = remember(connectionManager) { 
-        connectionManager?.let {
-            // This will be set asynchronously
-            null
         }
     }
     
@@ -262,28 +271,7 @@ fun TerminalScreen(
                     factory = { ctx ->
                         SSHTerminalView(ctx).also { view ->
                             terminalView = view
-                            // Set up the write callback when connection manager is available
-                            connectionManager?.let { manager ->
-                                DefaultScope.launch(Dispatchers.IO) {
-                                    val shellResult = manager.openShell()
-                                    if (shellResult.isSuccess) {
-                                        shellResult.getOrNull()?.let { channel ->
-                                            withContext(Dispatchers.Main) {
-                                                view.setWriteCallback { data ->
-                                                    DefaultScope.launch(Dispatchers.IO) {
-                                                        try {
-                                                            channel.outputStream.write(data)
-                                                            channel.outputStream.flush()
-                                                        } catch (e: Exception) {
-                                                            // Ignore write errors
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            // Write callback will be set by LaunchedEffect when shellChannel is available
                         }
                     },
                     modifier = Modifier.fillMaxSize(),
@@ -445,16 +433,19 @@ class SSHTerminalView(context: Context) : View(context) {
         
         val screen = emulator?.screen ?: return
         
-        // Draw terminal content
+        // Draw terminal content - process one row at a time for efficiency
         for (row in 0 until rows) {
             val y = row * fontHeight + fontAscent
             
-            for (col in 0 until columns) {
+            // Get the entire row text at once
+            val rowText = screen.getSelectedText(0, row, columns, row + 1)
+            
+            // Draw each character in the row
+            for (col in 0 until minOf(columns, rowText.length)) {
                 val x = col * fontWidth
+                val char = rowText[col]
                 
-                // Get character and style at this position
-                val char = screen.getSelectedText(col, row, col + 1, row + 1)
-                if (char.isNotEmpty() && char[0] != ' ') {
+                if (char != ' ' && char != '\u0000') {
                     // Get the style for coloring
                     val style = screen.getStyleAt(row, col)
                     val fg = com.termux.terminal.TextStyle.decodeForeColor(style)
@@ -466,7 +457,7 @@ class SSHTerminalView(context: Context) : View(context) {
                         else -> Color.GREEN
                     }
                     
-                    canvas.drawText(char, x, y, paint)
+                    canvas.drawText(char.toString(), x, y, paint)
                 }
             }
         }
@@ -485,7 +476,6 @@ class SSHTerminalView(context: Context) : View(context) {
                 cursorY + fontHeight,
                 paint
             )
-            paint.style = Paint.Style.FILL
         }
     }
     
