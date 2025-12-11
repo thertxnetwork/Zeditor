@@ -387,13 +387,13 @@ class SSHTerminalView(context: Context) : View(context) {
             override fun logStackTrace(tag: String?, e: Exception?) {}
         }
         
+        // TerminalEmulator constructor for v0.114:
+        // TerminalEmulator(TerminalOutput session, int columns, int rows, Integer transcriptRows, TerminalSessionClient client)
         emulator = TerminalEmulator(
             terminalOutput,
             columns,
             rows,
-            fontWidth.toInt(),
-            fontHeight.toInt(),
-            2000,
+            2000,  // transcriptRows
             sessionClient
         )
     }
@@ -407,7 +407,8 @@ class SSHTerminalView(context: Context) : View(context) {
             if (emulator != null && (newColumns != columns || newRows != rows)) {
                 columns = newColumns
                 rows = newRows
-                emulator?.resize(columns, rows, fontWidth.toInt(), fontHeight.toInt())
+                // resize method in v0.114: resize(int columns, int rows)
+                emulator?.resize(columns, rows)
             } else if (emulator == null && writeCallback != null) {
                 columns = newColumns
                 rows = newRows

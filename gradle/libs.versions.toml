@@ -54,7 +54,7 @@ composeDnd = "0.4.0"
 androidsvgAar = "1.4"
 commonsCompress = "1.26.0"
 jsch = "0.1.55"
-termuxTerminalEmulator = "0.118.0"
+termuxTerminalEmulator = "0.114"
 
 [libraries]
 androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentfile" }
