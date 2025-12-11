@@ -8,6 +8,7 @@ import com.rk.resources.drawables
 import com.rk.resources.getDrawable
 import com.rk.resources.getString
 import com.rk.resources.strings
+import com.rk.runner.ExecutionActivity
 import com.rk.runner.currentRunner
 import com.rk.utils.dialog
 import groovy.lang.Binding
@@ -53,20 +54,15 @@ class GroovyRunner : LanguageRunner() {
         currentRunner = WeakReference(this)
         isCurrentlyRunning = true
 
-        val code = withContext(Dispatchers.IO) { fileObject.readText() }
-
-        val result = executeCode(code)
-
+        // Launch the ExecutionActivity for a better experience
         withContext(Dispatchers.Main) {
-            if (result.isSuccess) {
-                dialog(
-                    title = "Groovy Output",
-                    msg = if (result.output.isNotEmpty()) result.output else "(No output)",
-                    onOk = {}
-                )
-            } else {
-                dialog(title = "Groovy Error", msg = result.errorOutput.ifEmpty { result.output }, onOk = {})
-            }
+            val intent = ExecutionActivity.createIntent(
+                context = context,
+                fileObject = fileObject,
+                languageName = getLanguageName(),
+                runnerClass = this@GroovyRunner.javaClass.name
+            )
+            context.startActivity(intent)
         }
 
         isCurrentlyRunning = false

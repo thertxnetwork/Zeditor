@@ -2,24 +2,24 @@ package com.rk.runner.runners.languages
 
 import android.content.Context
 import android.graphics.drawable.Drawable
+import com.eclipsesource.v8.V8
+import com.eclipsesource.v8.V8Object
+import com.eclipsesource.v8.V8ScriptExecutionException
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.resources.drawables
 import com.rk.resources.getDrawable
 import com.rk.resources.getString
 import com.rk.resources.strings
+import com.rk.runner.ExecutionActivity
 import com.rk.runner.currentRunner
 import com.rk.utils.dialog
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 import java.lang.ref.WeakReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.mozilla.javascript.Context as RhinoContext
-import org.mozilla.javascript.RhinoException
 
 /**
- * TypeScript runner - attempts to run TypeScript as JavaScript using Rhino.
+ * TypeScript runner - attempts to run TypeScript as JavaScript using J2V8.
  *
  * LIMITATIONS:
  * - TypeScript-specific syntax (type annotations, interfaces, etc.) will cause errors
@@ -33,13 +33,14 @@ import org.mozilla.javascript.RhinoException
  */
 class TypeScriptRunner : LanguageRunner() {
 
-    private var rhinoContext: RhinoContext? = null
+    private var v8Runtime: V8? = null
+    private val outputBuffer = StringBuilder()
 
     override fun getLanguageName(): String = "TypeScript"
 
     override fun getSupportedExtensions(): List<String> = listOf("ts")
 
-    override fun getName(): String = "TypeScript (JS mode)"
+    override fun getName(): String = "TypeScript (J2V8)"
 
     override fun getIcon(context: Context): Drawable? {
         return drawables.ic_language_js.getDrawable(context)
@@ -54,27 +55,15 @@ class TypeScriptRunner : LanguageRunner() {
         currentRunner = WeakReference(this)
         isCurrentlyRunning = true
 
-        val code = withContext(Dispatchers.IO) { fileObject.readText() }
-
-        val result = executeCode(code)
-
+        // Launch the ExecutionActivity for a better experience
         withContext(Dispatchers.Main) {
-            if (result.isSuccess) {
-                dialog(
-                    title = "TypeScript Output",
-                    msg = if (result.output.isNotEmpty()) result.output else "(No output)",
-                    onOk = {}
-                )
-            } else {
-                val errorMsg = buildString {
-                    append(result.errorOutput.ifEmpty { result.output })
-                    if (result.errorOutput.contains("syntax error") || result.errorOutput.contains("Unexpected")) {
-                        append("\n\nNote: TypeScript type annotations are not supported.")
-                        append("\nFor full TypeScript, use Termux with ts-node.")
-                    }
-                }
-                dialog(title = "TypeScript Error", msg = errorMsg, onOk = {})
-            }
+            val intent = ExecutionActivity.createIntent(
+                context = context,
+                fileObject = fileObject,
+                languageName = getLanguageName(),
+                runnerClass = this@TypeScriptRunner.javaClass.name
+            )
+            context.startActivity(intent)
         }
 
         isCurrentlyRunning = false
@@ -83,101 +72,105 @@ class TypeScriptRunner : LanguageRunner() {
     override suspend fun executeCode(code: String): ExecutionResult {
         return withContext(Dispatchers.IO) {
             val startTime = System.currentTimeMillis()
-            val outputStream = ByteArrayOutputStream()
-            val printStream = PrintStream(outputStream)
-            val originalOut = System.out
+            outputBuffer.clear()
 
             try {
-                rhinoContext = RhinoContext.enter()
-                rhinoContext?.let { ctx ->
-                    ctx.optimizationLevel = -1
+                v8Runtime = V8.createV8Runtime()
+                v8Runtime?.let { v8 ->
+                    // Create console object for logging
+                    val console = V8Object(v8)
 
-                    val scope = ctx.initStandardObjects()
+                    // Register console.log function
+                    console.registerJavaMethod({ _, parameters ->
+                        val message = (0 until parameters.length())
+                            .map { parameters.get(it)?.toString() ?: "null" }
+                            .joinToString(" ")
+                        outputBuffer.append(message).append("\n")
+                    }, "log")
 
-                    // Add console.log support
-                    val consoleScript =
-                        """
-                        var console = {
-                            log: function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                java.lang.System.out.println(args.join(' '));
-                            },
-                            error: function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                java.lang.System.err.println(args.join(' '));
-                            },
-                            warn: function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                java.lang.System.out.println('[WARN] ' + args.join(' '));
-                            }
-                        };
-                        var print = console.log;
-                    """
-                            .trimIndent()
+                    // Register console.error function
+                    console.registerJavaMethod({ _, parameters ->
+                        val message = (0 until parameters.length())
+                            .map { parameters.get(it)?.toString() ?: "null" }
+                            .joinToString(" ")
+                        outputBuffer.append("[ERROR] ").append(message).append("\n")
+                    }, "error")
 
-                    ctx.evaluateString(scope, consoleScript, "console", 1, null)
+                    // Register console.warn function
+                    console.registerJavaMethod({ _, parameters ->
+                        val message = (0 until parameters.length())
+                            .map { parameters.get(it)?.toString() ?: "null" }
+                            .joinToString(" ")
+                        outputBuffer.append("[WARN] ").append(message).append("\n")
+                    }, "warn")
 
-                    System.setOut(printStream)
+                    v8.add("console", console)
 
-                    val result = ctx.evaluateString(scope, code, "script.ts", 1, null)
+                    // Add print function as alias to console.log
+                    v8.executeVoidScript("var print = console.log;")
 
-                    System.setOut(originalOut)
+                    // Execute the user code
+                    val result = v8.executeScript(code)
+
+                    console.close()
 
                     val executionTime = System.currentTimeMillis() - startTime
-                    val output = outputStream.toString("UTF-8")
+                    val output = outputBuffer.toString()
 
-                    val finalOutput =
-                        if (output.isNotEmpty()) {
-                            output
-                        } else if (result != null && result != RhinoContext.getUndefinedValue()) {
-                            RhinoContext.toString(result)
-                        } else {
-                            "(Execution completed in ${executionTime}ms)"
-                        }
+                    val finalOutput = when {
+                        output.isNotEmpty() -> output.trimEnd()
+                        result != null && result.toString() != "undefined" -> result.toString()
+                        else -> "(Execution completed in ${executionTime}ms)"
+                    }
 
-                    ExecutionResult(output = finalOutput, errorOutput = "", isSuccess = true, executionTimeMs = executionTime)
+                    ExecutionResult(
+                        output = finalOutput,
+                        errorOutput = "",
+                        isSuccess = true,
+                        executionTimeMs = executionTime
+                    )
                 } ?: ExecutionResult(
                     output = "",
-                    errorOutput = "Failed to initialize JavaScript context",
+                    errorOutput = "Failed to initialize V8 JavaScript runtime",
                     isSuccess = false,
                     executionTimeMs = 0
                 )
-            } catch (e: RhinoException) {
-                System.setOut(originalOut)
+            } catch (e: V8ScriptExecutionException) {
                 val executionTime = System.currentTimeMillis() - startTime
+                var errorMsg = buildString {
+                    append("TypeScript Error: ${e.jsMessage ?: e.message}\n")
+                    e.jsStackTrace?.let { append("Stack trace:\n$it") }
+                }
+                // Add note about TypeScript limitations
+                if (errorMsg.contains("Unexpected") || errorMsg.contains(":") && errorMsg.contains("error")) {
+                    errorMsg += "\n\nNote: TypeScript type annotations are not supported."
+                    errorMsg += "\nFor full TypeScript, use Termux with ts-node."
+                }
                 ExecutionResult(
-                    output = outputStream.toString("UTF-8"),
-                    errorOutput = "TypeScript Error: ${e.message}\nAt line ${e.lineNumber()}",
+                    output = outputBuffer.toString(),
+                    errorOutput = errorMsg,
                     isSuccess = false,
                     executionTimeMs = executionTime
                 )
             } catch (e: Exception) {
-                System.setOut(originalOut)
                 val executionTime = System.currentTimeMillis() - startTime
                 ExecutionResult(
-                    output = outputStream.toString("UTF-8"),
+                    output = outputBuffer.toString(),
                     errorOutput = "Error: ${e.message}",
                     isSuccess = false,
                     executionTimeMs = executionTime
                 )
             } finally {
-                try {
-                    RhinoContext.exit()
-                } catch (_: Exception) {}
-                rhinoContext = null
-                printStream.close()
-                outputStream.close()
+                v8Runtime?.close()
+                v8Runtime = null
             }
         }
     }
 
     override suspend fun stop() {
         super.stop()
-        rhinoContext?.let {
-            try {
-                RhinoContext.exit()
-            } catch (_: Exception) {}
-        }
-        rhinoContext = null
+        v8Runtime?.terminateExecution()
+        v8Runtime?.close()
+        v8Runtime = null
     }
 }
