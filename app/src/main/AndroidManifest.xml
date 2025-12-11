@@ -92,5 +92,9 @@
         <activity
             android:name="com.rk.runner.runners.web.WebActivity"
             android:exported="false" />
+        <activity
+            android:name="com.rk.runner.ExecutionActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

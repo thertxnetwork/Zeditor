@@ -2,12 +2,16 @@ package com.rk.runner.runners.languages
 
 import android.content.Context
 import android.graphics.drawable.Drawable
+import com.eclipsesource.v8.V8
+import com.eclipsesource.v8.V8Object
+import com.eclipsesource.v8.V8ScriptExecutionException
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.resources.drawables
 import com.rk.resources.getDrawable
 import com.rk.resources.getString
 import com.rk.resources.strings
+import com.rk.runner.ExecutionActivity
 import com.rk.runner.currentRunner
 import com.rk.utils.dialog
 import java.io.ByteArrayOutputStream
@@ -15,30 +19,28 @@ import java.io.PrintStream
 import java.lang.ref.WeakReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.mozilla.javascript.Context as RhinoContext
-import org.mozilla.javascript.RhinoException
-import org.mozilla.javascript.ScriptableObject
 
 /**
- * JavaScript language runner using Mozilla Rhino (pure Java implementation).
+ * JavaScript language runner using J2V8 (V8 JavaScript engine).
  *
  * Features:
- * - Full JavaScript support (ES5-ES6)
- * - No JNI/NDK required (pure JVM)
- * - Complete ECMAScript implementation
- * - Good performance on Android
+ * - Full ES2020+ JavaScript support via V8 engine
+ * - High performance native execution
+ * - Modern JavaScript features support
+ * - Better performance than Rhino
  *
- * Recommended by: https://github.com/nicklockwood/rhino
+ * V8 is the JavaScript engine used in Chrome and Node.js.
  */
 class JavaScriptRunner : LanguageRunner() {
 
-    private var rhinoContext: RhinoContext? = null
+    private var v8Runtime: V8? = null
+    private val outputBuffer = StringBuilder()
 
     override fun getLanguageName(): String = "JavaScript"
 
     override fun getSupportedExtensions(): List<String> = listOf("js")
 
-    override fun getName(): String = "JavaScript (Rhino)"
+    override fun getName(): String = "JavaScript (J2V8)"
 
     override fun getIcon(context: Context): Drawable? {
         return drawables.ic_language_js.getDrawable(context)
@@ -53,20 +55,15 @@ class JavaScriptRunner : LanguageRunner() {
         currentRunner = WeakReference(this)
         isCurrentlyRunning = true
 
-        val code = withContext(Dispatchers.IO) { fileObject.readText() }
-
-        val result = executeCode(code)
-
+        // Launch the ExecutionActivity for a better experience
         withContext(Dispatchers.Main) {
-            if (result.isSuccess) {
-                dialog(
-                    title = "JavaScript Output",
-                    msg = if (result.output.isNotEmpty()) result.output else "(No output)",
-                    onOk = {}
-                )
-            } else {
-                dialog(title = "JavaScript Error", msg = result.errorOutput.ifEmpty { result.output }, onOk = {})
-            }
+            val intent = ExecutionActivity.createIntent(
+                context = context,
+                fileObject = fileObject,
+                languageName = getLanguageName(),
+                runnerClass = this@JavaScriptRunner.javaClass.name
+            )
+            context.startActivity(intent)
         }
 
         isCurrentlyRunning = false
@@ -75,105 +72,108 @@ class JavaScriptRunner : LanguageRunner() {
     override suspend fun executeCode(code: String): ExecutionResult {
         return withContext(Dispatchers.IO) {
             val startTime = System.currentTimeMillis()
-            val outputStream = ByteArrayOutputStream()
-            val printStream = PrintStream(outputStream)
-            val originalOut = System.out
+            outputBuffer.clear()
 
             try {
-                rhinoContext = RhinoContext.enter()
-                rhinoContext?.let { ctx ->
-                    // Set optimization level to -1 to interpret code (required on Android)
-                    ctx.optimizationLevel = -1
+                v8Runtime = V8.createV8Runtime()
+                v8Runtime?.let { v8 ->
+                    // Create console object for logging
+                    val console = V8Object(v8)
+                    
+                    // Register console.log function
+                    console.registerJavaMethod({ _, parameters ->
+                        val message = (0 until parameters.length())
+                            .map { parameters.get(it)?.toString() ?: "null" }
+                            .joinToString(" ")
+                        outputBuffer.append(message).append("\n")
+                    }, "log")
 
-                    val scope = ctx.initStandardObjects()
+                    // Register console.error function
+                    console.registerJavaMethod({ _, parameters ->
+                        val message = (0 until parameters.length())
+                            .map { parameters.get(it)?.toString() ?: "null" }
+                            .joinToString(" ")
+                        outputBuffer.append("[ERROR] ").append(message).append("\n")
+                    }, "error")
 
-                    // Add console.log support
-                    val consoleScript =
-                        """
-                        var console = {
-                            log: function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                java.lang.System.out.println(args.join(' '));
-                            },
-                            error: function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                java.lang.System.err.println(args.join(' '));
-                            },
-                            warn: function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                java.lang.System.out.println('[WARN] ' + args.join(' '));
-                            },
-                            info: function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                java.lang.System.out.println('[INFO] ' + args.join(' '));
-                            }
-                        };
-                        var print = console.log;
-                    """
-                            .trimIndent()
+                    // Register console.warn function
+                    console.registerJavaMethod({ _, parameters ->
+                        val message = (0 until parameters.length())
+                            .map { parameters.get(it)?.toString() ?: "null" }
+                            .joinToString(" ")
+                        outputBuffer.append("[WARN] ").append(message).append("\n")
+                    }, "warn")
 
-                    ctx.evaluateString(scope, consoleScript, "console", 1, null)
+                    // Register console.info function
+                    console.registerJavaMethod({ _, parameters ->
+                        val message = (0 until parameters.length())
+                            .map { parameters.get(it)?.toString() ?: "null" }
+                            .joinToString(" ")
+                        outputBuffer.append("[INFO] ").append(message).append("\n")
+                    }, "info")
 
-                    // Redirect System.out to capture output
-                    System.setOut(printStream)
+                    v8.add("console", console)
 
-                    val result = ctx.evaluateString(scope, code, "script.js", 1, null)
+                    // Add print function as alias to console.log
+                    v8.executeVoidScript("var print = console.log;")
 
-                    System.setOut(originalOut)
+                    // Execute the user code
+                    val result = v8.executeScript(code)
+
+                    console.close()
 
                     val executionTime = System.currentTimeMillis() - startTime
-                    val output = outputStream.toString("UTF-8")
+                    val output = outputBuffer.toString()
 
-                    val finalOutput =
-                        if (output.isNotEmpty()) {
-                            output
-                        } else if (result != null && result != RhinoContext.getUndefinedValue()) {
-                            RhinoContext.toString(result)
-                        } else {
-                            "(Execution completed in ${executionTime}ms)"
-                        }
+                    val finalOutput = when {
+                        output.isNotEmpty() -> output.trimEnd()
+                        result != null && result.toString() != "undefined" -> result.toString()
+                        else -> "(Execution completed in ${executionTime}ms)"
+                    }
 
-                    ExecutionResult(output = finalOutput, errorOutput = "", isSuccess = true, executionTimeMs = executionTime)
+                    ExecutionResult(
+                        output = finalOutput,
+                        errorOutput = "",
+                        isSuccess = true,
+                        executionTimeMs = executionTime
+                    )
                 } ?: ExecutionResult(
                     output = "",
-                    errorOutput = "Failed to initialize JavaScript context",
+                    errorOutput = "Failed to initialize V8 JavaScript runtime",
                     isSuccess = false,
                     executionTimeMs = 0
                 )
-            } catch (e: RhinoException) {
-                System.setOut(originalOut)
+            } catch (e: V8ScriptExecutionException) {
                 val executionTime = System.currentTimeMillis() - startTime
+                val errorMsg = buildString {
+                    append("JavaScript Error: ${e.jsMessage ?: e.message}\n")
+                    e.jsStackTrace?.let { append("Stack trace:\n$it") }
+                }
                 ExecutionResult(
-                    output = outputStream.toString("UTF-8"),
-                    errorOutput = "JavaScript Error: ${e.message}\nAt line ${e.lineNumber()}",
+                    output = outputBuffer.toString(),
+                    errorOutput = errorMsg,
                     isSuccess = false,
                     executionTimeMs = executionTime
                 )
             } catch (e: Exception) {
-                System.setOut(originalOut)
                 val executionTime = System.currentTimeMillis() - startTime
                 ExecutionResult(
-                    output = outputStream.toString("UTF-8"),
+                    output = outputBuffer.toString(),
                     errorOutput = "Error: ${e.message}",
                     isSuccess = false,
                     executionTimeMs = executionTime
                 )
             } finally {
-                RhinoContext.exit()
-                rhinoContext = null
-                printStream.close()
-                outputStream.close()
+                v8Runtime?.close()
+                v8Runtime = null
             }
         }
     }
 
     override suspend fun stop() {
         super.stop()
-        rhinoContext?.let {
-            try {
-                RhinoContext.exit()
-            } catch (_: Exception) {}
-        }
-        rhinoContext = null
+        v8Runtime?.terminateExecution()
+        v8Runtime?.close()
+        v8Runtime = null
     }
 }

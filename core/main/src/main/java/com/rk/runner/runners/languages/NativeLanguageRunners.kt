@@ -2,12 +2,14 @@ package com.rk.runner.runners.languages
 
 import android.content.Context
 import android.graphics.drawable.Drawable
+import com.chaquo.python.Python
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.resources.drawables
 import com.rk.resources.getDrawable
 import com.rk.resources.getString
 import com.rk.resources.strings
+import com.rk.runner.ExecutionActivity
 import com.rk.runner.RunnerImpl
 import com.rk.runner.currentRunner
 import com.rk.utils.dialog
@@ -16,18 +18,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Python runner - Shows information about running Python on Android.
+ * Python runner using Chaquopy - Full CPython implementation.
  *
- * For full Python support, consider:
- * - Chaquopy (commercial/free tier) - Full CPython 3.8+
- * - python-for-android (p4a) - Full CPython, used by Kivy
- * - Pydroid 3 - External app with full Python
+ * Features:
+ * - Full CPython 3.11 support via JNI/NDK
+ * - pip package support (numpy, requests, etc.)
+ * - Standard library access
+ * - Native performance
  *
- * This runner provides guidance on how to set up Python execution.
+ * This runner executes actual Python code using the embedded CPython interpreter.
  */
-class PythonRunner : RunnerImpl() {
+class PythonRunner : LanguageRunner() {
 
-    override fun getName(): String = "Python Info"
+    override fun getLanguageName(): String = "Python"
+
+    override fun getSupportedExtensions(): List<String> = listOf("py")
+
+    override fun getName(): String = "Python (Chaquopy)"
 
     override fun getIcon(context: Context): Drawable? {
         return drawables.ic_language_python.getDrawable(context)
@@ -40,49 +47,112 @@ class PythonRunner : RunnerImpl() {
         }
 
         currentRunner = WeakReference(this)
+        isCurrentlyRunning = true
 
-        val message =
-            """
-            Python requires a native interpreter to run.
-            
-            Options for running Python on Android:
-            
-            1. Chaquopy (Recommended)
-               - Full CPython 3.8+ support
-               - Easy Gradle integration
-               - Commercial with free tier
-               
-            2. python-for-android (p4a)
-               - Full CPython support
-               - Used by Kivy framework
-               - Open source
-               
-            3. Termux (External)
-               - Install: pkg install python
-               - Run: python ${fileObject.getName()}
-               
-            4. Pydroid 3 (External App)
-               - Full Python IDE for Android
-               - Available on Play Store
-            
-            File: ${fileObject.getName()}
-            """
-                .trimIndent()
+        // Launch the ExecutionActivity for a better experience
+        withContext(Dispatchers.Main) {
+            val intent = ExecutionActivity.createIntent(
+                context = context,
+                fileObject = fileObject,
+                languageName = getLanguageName(),
+                runnerClass = this@PythonRunner.javaClass.name
+            )
+            context.startActivity(intent)
+        }
 
-        withContext(Dispatchers.Main) { dialog(title = "Python Runner", msg = message, onOk = {}) }
+        isCurrentlyRunning = false
     }
 
-    override suspend fun isRunning(): Boolean = false
+    override suspend fun executeCode(code: String): ExecutionResult {
+        return withContext(Dispatchers.IO) {
+            val startTime = System.currentTimeMillis()
+            val outputCapture = StringBuilder()
+            val errorCapture = StringBuilder()
 
-    override suspend fun stop() {}
+            try {
+                // Initialize Python if not already started
+                if (!Python.isStarted()) {
+                    return@withContext ExecutionResult(
+                        output = "",
+                        errorOutput = "Python interpreter not initialized. Please ensure the app is properly started.",
+                        isSuccess = false,
+                        executionTimeMs = 0
+                    )
+                }
+
+                val py = Python.getInstance()
+                val sys = py.getModule("sys")
+                val io = py.getModule("io")
+                
+                // Create StringIO objects to capture stdout and stderr
+                val stdoutCapture = io.callAttr("StringIO")
+                val stderrCapture = io.callAttr("StringIO")
+                
+                // Save original stdout/stderr
+                val originalStdout = sys.get("stdout")
+                val originalStderr = sys.get("stderr")
+                
+                try {
+                    // Redirect stdout and stderr
+                    sys.put("stdout", stdoutCapture)
+                    sys.put("stderr", stderrCapture)
+                    
+                    // Execute the code
+                    val builtins = py.getBuiltins()
+                    builtins.callAttr("exec", code)
+                    
+                    // Get captured output
+                    stdoutCapture.callAttr("seek", 0)
+                    stderrCapture.callAttr("seek", 0)
+                    
+                    val stdout = stdoutCapture.callAttr("read").toString()
+                    val stderr = stderrCapture.callAttr("read").toString()
+                    
+                    outputCapture.append(stdout)
+                    errorCapture.append(stderr)
+                    
+                } finally {
+                    // Restore original stdout/stderr
+                    sys.put("stdout", originalStdout)
+                    sys.put("stderr", originalStderr)
+                }
+
+                val executionTime = System.currentTimeMillis() - startTime
+                val output = outputCapture.toString()
+                val errors = errorCapture.toString()
+
+                ExecutionResult(
+                    output = output.ifEmpty { "(Execution completed in ${executionTime}ms)" },
+                    errorOutput = errors,
+                    isSuccess = errors.isEmpty(),
+                    executionTimeMs = executionTime
+                )
+            } catch (e: Exception) {
+                val executionTime = System.currentTimeMillis() - startTime
+                val errorMsg = buildString {
+                    append("Python Error: ${e.message}\n")
+                    e.cause?.message?.let { append(it) }
+                }
+                ExecutionResult(
+                    output = outputCapture.toString(),
+                    errorOutput = errorMsg,
+                    isSuccess = false,
+                    executionTimeMs = executionTime
+                )
+            }
+        }
+    }
+
+    override suspend fun stop() {
+        super.stop()
+    }
 }
 
 /**
  * C/C++ runner - Shows information about compiling C/C++ on Android.
  *
- * For C/C++ support:
- * - Android NDK (Official) - Native C/C++ support
- * - Termux with clang/gcc
+ * Note: C/C++ requires compilation before execution. Runtime interpretation
+ * is not possible without a pre-compiled interpreter binary.
  */
 class CppRunner : RunnerImpl() {
 
@@ -133,15 +203,15 @@ class CppRunner : RunnerImpl() {
 }
 
 /**
- * Go runner - Shows information about running Go on Android.
+ * Go runner - Information about Go on Android.
  *
- * For Go support:
- * - gomobile (Official) - Full Go via NDK bindings
- * - go-android - Full Go language support
+ * Note: Go (via gomobile) requires pre-compilation. You cannot execute
+ * arbitrary Go code at runtime - all Go code must be compiled ahead of time.
+ * gomobile generates native libraries that can be called from Java/Kotlin.
  */
 class GoRunner : RunnerImpl() {
 
-    override fun getName(): String = "Go Info"
+    override fun getName(): String = "Go (gomobile)"
 
     override fun getIcon(context: Context): Drawable? {
         return drawables.run.getDrawable(context)
@@ -157,22 +227,47 @@ class GoRunner : RunnerImpl() {
 
         val message =
             """
-            Go requires the Go compiler to run.
+            🐹 Go Language on Android
             
-            Options for running Go on Android:
+            ⚠️ IMPORTANT: Go cannot execute arbitrary code at runtime.
+            All Go code must be pre-compiled before use.
             
-            1. gomobile (Official)
-               - Full Go language support
-               - NDK bindings
-               - Can build Android apps
-               
-            2. Termux (External)
-               - Install: pkg install golang
-               - Run: go run ${fileObject.getName()}
-               
-            3. Cross-compilation
-               - Build on PC: GOOS=android GOARCH=arm64 go build
-               - Transfer and run on Android
+            ═══════════════════════════════════
+            HOW GOMOBILE WORKS
+            ═══════════════════════════════════
+            
+            gomobile compiles Go code into native libraries
+            (.aar files) that can be called from Java/Kotlin.
+            
+            Steps to use Go in your app:
+            
+            1. Install gomobile:
+               go install golang.org/x/mobile/cmd/gomobile@latest
+            
+            2. Initialize gomobile:
+               gomobile init
+            
+            3. Create a Go package with exported functions:
+               package mylib
+               func Hello(name string) string {
+                   return "Hello, " + name
+               }
+            
+            4. Build for Android:
+               gomobile bind -target=android ./mylib
+            
+            5. Import the generated .aar in your Android project
+            
+            ═══════════════════════════════════
+            WHY RUNTIME EXECUTION ISN'T POSSIBLE
+            ═══════════════════════════════════
+            
+            Go is a compiled language. Unlike Python or JavaScript,
+            there's no Go interpreter that can execute code at runtime.
+            
+            Alternative: Use Termux
+            - Install: pkg install golang
+            - Run: go run ${fileObject.getName()}
             
             File: ${fileObject.getName()}
             """
@@ -188,10 +283,6 @@ class GoRunner : RunnerImpl() {
 
 /**
  * Rust runner - Shows information about running Rust on Android.
- *
- * For Rust support:
- * - cargo-ndk - Full Rust via NDK/JNI
- * - Mozilla's Rust Android - Full support
  */
 class RustRunner : RunnerImpl() {
 
@@ -245,15 +336,14 @@ class RustRunner : RunnerImpl() {
 }
 
 /**
- * PHP runner - Shows information about running PHP on Android.
+ * PHP runner - Information about PHP on Android.
  *
- * For PHP support:
- * - php-java-bridge - Full PHP via bridge
- * - Native PHP via JNI/NDK
+ * Note: Full PHP execution requires cross-compiling PHP for Android NDK.
+ * This is a complex process that requires building PHP as a native library.
  */
 class PhpRunner : RunnerImpl() {
 
-    override fun getName(): String = "PHP Info"
+    override fun getName(): String = "PHP (Native JNI)"
 
     override fun getIcon(context: Context): Drawable? {
         return drawables.run.getDrawable(context)
@@ -269,21 +359,46 @@ class PhpRunner : RunnerImpl() {
 
         val message =
             """
-            PHP requires a PHP interpreter to run.
+            🐘 PHP on Android
             
-            Options for running PHP on Android:
+            ⚠️ PHP runtime execution requires native libraries.
             
-            1. php-java-bridge
-               - Full PHP support via Java bridge
-               - Can be integrated into Android apps
-               
-            2. Termux (External)
-               - Install: pkg install php
-               - Run: php ${fileObject.getName()}
-               
-            3. KSWEB / AndroPHP (External Apps)
-               - PHP server for Android
-               - Good for web development
+            ═══════════════════════════════════
+            INTEGRATION OPTIONS
+            ═══════════════════════════════════
+            
+            1. Cross-compile PHP for Android:
+               - Download PHP source from php.net
+               - Configure for Android NDK toolchain
+               - Build as shared library (.so)
+               - Create JNI bindings
+               - Add to app's jniLibs folder
+            
+            2. Use pre-built PHP libraries:
+               - Some projects provide pre-compiled PHP
+               - Look for php-android or similar
+            
+            ═══════════════════════════════════
+            WHY IT'S COMPLEX
+            ═══════════════════════════════════
+            
+            PHP is written in C and requires:
+            - NDK cross-compilation setup
+            - Android-specific patches
+            - JNI wrapper code
+            - Proper library loading
+            
+            This is significantly more complex than
+            using interpreted languages like Python
+            (which Chaquopy handles automatically).
+            
+            ═══════════════════════════════════
+            RECOMMENDED ALTERNATIVE
+            ═══════════════════════════════════
+            
+            Use Termux for PHP development:
+            - Install: pkg install php
+            - Run: php ${fileObject.getName()}
             
             File: ${fileObject.getName()}
             """
@@ -299,10 +414,6 @@ class PhpRunner : RunnerImpl() {
 
 /**
  * Ruby runner - Shows information about running Ruby on Android.
- *
- * For Ruby support:
- * - JRuby - Full Ruby on JVM
- * - mruby-android - Lightweight Ruby via JNI
  */
 class RubyRunner : RunnerImpl() {
 
@@ -353,8 +464,6 @@ class RubyRunner : RunnerImpl() {
 
 /**
  * Kotlin runner - Shows information about running Kotlin scripts.
- *
- * Kotlin is natively supported on Android but scripts need compilation.
  */
 class KotlinScriptRunner : RunnerImpl() {
 

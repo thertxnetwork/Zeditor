@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.baselineprofile)
     alias(libs.plugins.ktfmt)
+    id("com.chaquo.python")
 }
 
 android {
@@ -89,6 +90,11 @@ android {
         versionCode = 72
         versionName = "3.2.4"
         vectorDrawables { useSupportLibrary = true }
+        
+        // Chaquopy Python configuration
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+        }
     }
 
     compileOptions {
@@ -106,6 +112,19 @@ android {
     composeOptions { kotlinCompilerExtensionVersion = "1.5.15" }
 
     packaging { jniLibs { useLegacyPackaging = true } }
+}
+
+// Chaquopy Python configuration
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+        
+        pip {
+            // Common Python packages
+            install("numpy")
+            install("requests")
+        }
+    }
 }
 
 dependencies {
