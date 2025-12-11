@@ -72,6 +72,13 @@ private fun Categories(navController: NavController) {
         onNavigate = { navController.navigate(SettingsRoutes.EditorSettings.route) },
     )
 
+    PreferenceCategory(
+        label = "SSH Servers",
+        description = "Configure VPS servers for remote code execution",
+        iconResource = drawables.bash,
+        onNavigate = { navController.navigate(SettingsRoutes.SSHServers.route) },
+    )
+
     if (InbuiltFeatures.debugMode.state.value) {
         PreferenceCategory(
             label = stringResource(strings.debug_options),

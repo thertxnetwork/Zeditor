@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ktfmt)
+    alias(libs.plugins.kotlinParcelize)
 }
 
 val gitCommitHash: Provider<String> =
@@ -124,6 +125,9 @@ dependencies {
     
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidsvg.aar)
+    
+    // SSH support for VPS code runner
+    implementation(libs.jsch)
 }
 
 abstract class GenerateSupportedLocales : DefaultTask() {
