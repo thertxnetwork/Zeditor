@@ -13,7 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -111,7 +111,7 @@ fun ExecutionScreen(
                         }
                     ) {
                         Icon(
-                            Icons.Filled.ContentCopy,
+                            Icons.Outlined.ContentCopy,
                             contentDescription = "Copy results"
                         )
                     }
