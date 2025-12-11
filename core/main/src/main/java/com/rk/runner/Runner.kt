@@ -19,6 +19,8 @@ import com.rk.runner.runners.languages.ShellRunner
 import com.rk.runner.runners.languages.TypeScriptRunner
 import com.rk.runner.runners.web.html.HtmlRunner
 import com.rk.runner.runners.web.markdown.MarkDownRunner
+import com.rk.runner.ssh.SSHRunner
+import com.rk.runner.ssh.SSHServerManager
 import com.rk.utils.errorDialog
 import java.lang.ref.WeakReference
 import kotlin.text.Regex
@@ -136,6 +138,12 @@ object Runner {
 
     suspend fun run(context: Context, fileObject: FileObject, onMultipleRunners: (List<RunnerImpl>) -> Unit) {
         val availableRunners = mutableListOf<RunnerImpl>()
+
+        // Add SSH runners for each configured server
+        val sshServers = SSHServerManager.servers.toList()
+        sshServers.forEach { server ->
+            availableRunners.add(SSHRunner(server))
+        }
 
         ShellBasedRunners.runners.forEach {
             val name = fileObject.getName()
