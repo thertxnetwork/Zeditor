@@ -1,7 +1,5 @@
 pluginManagement {
     repositories {
-        maven { url = uri("https://maven.aliyun.com/repository/google") }
-        maven { url = uri("https://maven.aliyun.com/repository/public") }
         google()
         mavenCentral()
         gradlePluginPortal()
@@ -13,6 +11,9 @@ pluginManagement {
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots")
 
         maven("https://repo.eclipse.org/content/groups/releases/")
+        // Fallback mirrors for restricted network environments
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
     }
     plugins {
         kotlin("jvm") version "2.2.20"
@@ -24,8 +25,6 @@ plugins {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        maven { url = uri("https://maven.aliyun.com/repository/google") }
-        maven { url = uri("https://maven.aliyun.com/repository/public") }
         google()
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
@@ -36,6 +35,9 @@ dependencyResolutionManagement {
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots")
 
         maven("https://repo.eclipse.org/content/groups/releases/")
+        // Fallback mirrors for restricted network environments
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
     }
 }
 
