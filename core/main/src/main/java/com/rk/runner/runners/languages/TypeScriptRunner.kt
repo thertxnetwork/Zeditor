@@ -1,25 +1,27 @@
 package com.rk.runner.runners.languages
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.drawable.Drawable
+import com.eclipsesource.v8.JavaCallback
+import com.eclipsesource.v8.V8
+import com.eclipsesource.v8.V8Array
+import com.eclipsesource.v8.V8Object
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.resources.drawables
 import com.rk.resources.getDrawable
 import com.rk.resources.getString
 import com.rk.resources.strings
+import com.rk.runner.ExecutionActivity
 import com.rk.runner.currentRunner
 import com.rk.utils.dialog
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 import java.lang.ref.WeakReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.mozilla.javascript.Context as RhinoContext
-import org.mozilla.javascript.RhinoException
 
 /**
- * TypeScript runner - attempts to run TypeScript as JavaScript using Rhino.
+ * TypeScript runner - attempts to run TypeScript as JavaScript using V8.
  *
  * LIMITATIONS:
  * - TypeScript-specific syntax (type annotations, interfaces, etc.) will cause errors
@@ -33,13 +35,13 @@ import org.mozilla.javascript.RhinoException
  */
 class TypeScriptRunner : LanguageRunner() {
 
-    private var rhinoContext: RhinoContext? = null
+    private var v8Runtime: V8? = null
 
     override fun getLanguageName(): String = "TypeScript"
 
     override fun getSupportedExtensions(): List<String> = listOf("ts")
 
-    override fun getName(): String = "TypeScript (JS mode)"
+    override fun getName(): String = "TypeScript (V8 JS mode)"
 
     override fun getIcon(context: Context): Drawable? {
         return drawables.ic_language_js.getDrawable(context)
@@ -59,125 +61,126 @@ class TypeScriptRunner : LanguageRunner() {
         val result = executeCode(code)
 
         withContext(Dispatchers.Main) {
-            if (result.isSuccess) {
-                dialog(
-                    title = "TypeScript Output",
-                    msg = if (result.output.isNotEmpty()) result.output else "(No output)",
-                    onOk = {}
-                )
-            } else {
-                val errorMsg = buildString {
+            val errorMsg = if (!result.isSuccess && 
+                (result.errorOutput.contains("syntax error") || result.errorOutput.contains("Unexpected"))) {
+                buildString {
                     append(result.errorOutput.ifEmpty { result.output })
-                    if (result.errorOutput.contains("syntax error") || result.errorOutput.contains("Unexpected")) {
-                        append("\n\nNote: TypeScript type annotations are not supported.")
-                        append("\nFor full TypeScript, use Termux with ts-node.")
-                    }
+                    append("\n\nNote: TypeScript type annotations are not supported.")
+                    append("\nFor full TypeScript, use Termux with ts-node.")
                 }
-                dialog(title = "TypeScript Error", msg = errorMsg, onOk = {})
+            } else {
+                result.errorOutput
             }
+            
+            // Launch ExecutionActivity instead of showing dialog
+            val intent = Intent(context, ExecutionActivity::class.java).apply {
+                putExtra(ExecutionActivity.EXTRA_TITLE, "TypeScript Execution")
+                putExtra(ExecutionActivity.EXTRA_OUTPUT, result.output)
+                putExtra(ExecutionActivity.EXTRA_ERROR, errorMsg)
+                putExtra(ExecutionActivity.EXTRA_SUCCESS, result.isSuccess)
+                putExtra(ExecutionActivity.EXTRA_TIME, result.executionTimeMs)
+                putExtra(ExecutionActivity.EXTRA_ENGINE, "Google V8 JavaScript Engine (via J2V8) - JS Mode")
+            }
+            context.startActivity(intent)
         }
 
         isCurrentlyRunning = false
     }
 
+    private fun setupConsole(runtime: V8, outputBuffer: StringBuilder): V8Object {
+        val console = V8Object(runtime)
+        
+        // Helper to create console methods using JavaCallback interface
+        fun addConsoleMethod(methodName: String, prefix: String = "") {
+            console.registerJavaMethod(object : JavaCallback {
+                override fun invoke(receiver: V8Object, parameters: V8Array): Any? {
+                    val messages = mutableListOf<String>()
+                    for (i in 0 until parameters.length()) {
+                        messages.add(parameters.get(i).toString())
+                    }
+                    if (prefix.isNotEmpty()) {
+                        outputBuffer.append(prefix).append(" ")
+                    }
+                    outputBuffer.append(messages.joinToString(" ")).append("\n")
+                    return null
+                }
+            }, methodName)
+        }
+        
+        addConsoleMethod("log")
+        addConsoleMethod("error", "[ERROR]")
+        addConsoleMethod("warn", "[WARN]")
+        addConsoleMethod("info", "[INFO]")
+        
+        return console
+    }
+    
     override suspend fun executeCode(code: String): ExecutionResult {
         return withContext(Dispatchers.IO) {
             val startTime = System.currentTimeMillis()
-            val outputStream = ByteArrayOutputStream()
-            val printStream = PrintStream(outputStream)
-            val originalOut = System.out
-
+            val outputBuffer = StringBuilder()
+            var console: V8Object? = null
+            
             try {
-                rhinoContext = RhinoContext.enter()
-                rhinoContext?.let { ctx ->
-                    ctx.optimizationLevel = -1
-
-                    val scope = ctx.initStandardObjects()
-
-                    // Add console.log support
-                    val consoleScript =
-                        """
-                        var console = {
-                            log: function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                java.lang.System.out.println(args.join(' '));
-                            },
-                            error: function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                java.lang.System.err.println(args.join(' '));
-                            },
-                            warn: function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                java.lang.System.out.println('[WARN] ' + args.join(' '));
-                            }
-                        };
-                        var print = console.log;
-                    """
-                            .trimIndent()
-
-                    ctx.evaluateString(scope, consoleScript, "console", 1, null)
-
-                    System.setOut(printStream)
-
-                    val result = ctx.evaluateString(scope, code, "script.ts", 1, null)
-
-                    System.setOut(originalOut)
-
+                v8Runtime = V8.createV8Runtime()
+                
+                v8Runtime?.let { runtime ->
+                    // Setup console object with methods
+                    console = setupConsole(runtime, outputBuffer)
+                    runtime.add("console", console)
+                    
+                    // Execute the code
+                    val result = runtime.executeScript(code)
+                    
                     val executionTime = System.currentTimeMillis() - startTime
-                    val output = outputStream.toString("UTF-8")
-
-                    val finalOutput =
-                        if (output.isNotEmpty()) {
-                            output
-                        } else if (result != null && result != RhinoContext.getUndefinedValue()) {
-                            RhinoContext.toString(result)
-                        } else {
-                            "(Execution completed in ${executionTime}ms)"
-                        }
-
-                    ExecutionResult(output = finalOutput, errorOutput = "", isSuccess = true, executionTimeMs = executionTime)
+                    val output = outputBuffer.toString()
+                    
+                    val finalOutput = if (output.isNotEmpty()) {
+                        output.trimEnd()
+                    } else if (result != null && result.toString() != "undefined") {
+                        result.toString()
+                    } else {
+                        "(Execution completed in ${executionTime}ms)"
+                    }
+                    
+                    ExecutionResult(
+                        output = finalOutput,
+                        errorOutput = "",
+                        isSuccess = true,
+                        executionTimeMs = executionTime
+                    )
                 } ?: ExecutionResult(
                     output = "",
-                    errorOutput = "Failed to initialize JavaScript context",
+                    errorOutput = "Failed to initialize V8 JavaScript runtime",
                     isSuccess = false,
                     executionTimeMs = 0
                 )
-            } catch (e: RhinoException) {
-                System.setOut(originalOut)
-                val executionTime = System.currentTimeMillis() - startTime
-                ExecutionResult(
-                    output = outputStream.toString("UTF-8"),
-                    errorOutput = "TypeScript Error: ${e.message}\nAt line ${e.lineNumber()}",
-                    isSuccess = false,
-                    executionTimeMs = executionTime
-                )
             } catch (e: Exception) {
-                System.setOut(originalOut)
                 val executionTime = System.currentTimeMillis() - startTime
+                val output = outputBuffer.toString()
                 ExecutionResult(
-                    output = outputStream.toString("UTF-8"),
-                    errorOutput = "Error: ${e.message}",
+                    output = output,
+                    errorOutput = "TypeScript Error: ${e.message}",
                     isSuccess = false,
                     executionTimeMs = executionTime
                 )
             } finally {
                 try {
-                    RhinoContext.exit()
+                    console?.release()
+                    v8Runtime?.release()
                 } catch (_: Exception) {}
-                rhinoContext = null
-                printStream.close()
-                outputStream.close()
+                v8Runtime = null
             }
         }
     }
 
     override suspend fun stop() {
         super.stop()
-        rhinoContext?.let {
+        v8Runtime?.let {
             try {
-                RhinoContext.exit()
+                it.release()
             } catch (_: Exception) {}
         }
-        rhinoContext = null
+        v8Runtime = null
     }
 }

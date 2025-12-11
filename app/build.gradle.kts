@@ -89,6 +89,11 @@ android {
         versionCode = 72
         versionName = "3.2.4"
         vectorDrawables { useSupportLibrary = true }
+        
+        // Reduce APK size by including only common architectures for J2V8
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
     }
 
     compileOptions {
