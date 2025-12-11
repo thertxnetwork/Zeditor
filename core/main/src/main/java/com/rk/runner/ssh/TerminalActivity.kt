@@ -33,9 +33,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import com.rk.DefaultScope
 import com.rk.theme.XedTheme
-import com.termux.terminal.TerminalEmulator
-import com.termux.terminal.TerminalOutput
-import com.termux.terminal.TerminalSessionClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -285,13 +282,32 @@ fun TerminalScreen(
 }
 
 /**
- * Custom terminal view that uses Termux TerminalEmulator for ANSI processing
- * but handles its own rendering and keyboard input.
+ * Custom terminal view with built-in ANSI escape sequence processing.
+ * No external dependencies required.
  */
 class SSHTerminalView(context: Context) : View(context) {
     
-    private var emulator: TerminalEmulator? = null
-    private var terminalOutput: SSHTerminalOutput? = null
+    // Terminal buffer - each cell contains a character and color info
+    private data class TerminalCell(var char: Char = ' ', var fgColor: Int = Color.GREEN, var bgColor: Int = Color.BLACK)
+    
+    private var screenBuffer: Array<Array<TerminalCell>> = arrayOf()
+    private var cursorRow = 0
+    private var cursorCol = 0
+    private var columns = 80
+    private var rows = 24
+    
+    // Current text attributes
+    private var currentFgColor = Color.GREEN
+    private var currentBgColor = Color.BLACK
+    private var isBold = false
+    
+    // ANSI escape sequence parsing state
+    private var escapeState = EscapeState.NORMAL
+    private val escapeBuffer = StringBuilder()
+    
+    private enum class EscapeState {
+        NORMAL, ESCAPE, CSI
+    }
     
     private val paint = Paint().apply {
         isAntiAlias = true
@@ -307,9 +323,6 @@ class SSHTerminalView(context: Context) : View(context) {
     private var fontWidth: Float = 0f
     private var fontHeight: Float = 0f
     private var fontAscent: Float = 0f
-    
-    private var columns = 80
-    private var rows = 24
     
     private var writeCallback: ((ByteArray) -> Unit)? = null
     
@@ -343,59 +356,16 @@ class SSHTerminalView(context: Context) : View(context) {
         val metrics = paint.fontMetrics
         fontHeight = metrics.descent - metrics.ascent
         fontAscent = -metrics.ascent
+        
+        initializeBuffer()
+    }
+    
+    private fun initializeBuffer() {
+        screenBuffer = Array(rows) { Array(columns) { TerminalCell() } }
     }
     
     fun setWriteCallback(callback: (ByteArray) -> Unit) {
         writeCallback = callback
-        initializeEmulator()
-    }
-    
-    private fun initializeEmulator() {
-        if (width > 0 && height > 0) {
-            columns = maxOf(4, (width / fontWidth).toInt())
-            rows = maxOf(4, (height / fontHeight).toInt())
-        }
-        
-        terminalOutput = SSHTerminalOutput { data ->
-            writeCallback?.invoke(data)
-        }
-        
-        val sessionClient = object : TerminalSessionClient {
-            override fun onTextChanged(changedSession: com.termux.terminal.TerminalSession?) {
-                post { invalidate() }
-            }
-            override fun onTitleChanged(changedSession: com.termux.terminal.TerminalSession?) {}
-            override fun onSessionFinished(finishedSession: com.termux.terminal.TerminalSession?) {}
-            override fun onCopyTextToClipboard(session: com.termux.terminal.TerminalSession?, text: String?) {
-                text?.let {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("terminal", it))
-                }
-            }
-            override fun onPasteTextFromClipboard(session: com.termux.terminal.TerminalSession?) {}
-            override fun onBell(session: com.termux.terminal.TerminalSession?) {}
-            override fun onColorsChanged(session: com.termux.terminal.TerminalSession?) { post { invalidate() } }
-            override fun onTerminalCursorStateChange(state: Boolean) { post { invalidate() } }
-            override fun setTerminalShellPid(session: com.termux.terminal.TerminalSession?, pid: Int) {}
-            override fun getTerminalCursorStyle(): Int = 0
-            override fun logError(tag: String?, message: String?) {}
-            override fun logWarn(tag: String?, message: String?) {}
-            override fun logInfo(tag: String?, message: String?) {}
-            override fun logDebug(tag: String?, message: String?) {}
-            override fun logVerbose(tag: String?, message: String?) {}
-            override fun logStackTraceWithMessage(tag: String?, message: String?, e: Exception?) {}
-            override fun logStackTrace(tag: String?, e: Exception?) {}
-        }
-        
-        // TerminalEmulator constructor for v0.114:
-        // TerminalEmulator(TerminalOutput session, int columns, int rows, Integer transcriptRows, TerminalSessionClient client)
-        emulator = TerminalEmulator(
-            terminalOutput,
-            columns,
-            rows,
-            2000,  // transcriptRows
-            sessionClient
-        )
     }
     
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -404,22 +374,265 @@ class SSHTerminalView(context: Context) : View(context) {
             val newColumns = maxOf(4, (w / fontWidth).toInt())
             val newRows = maxOf(4, (h / fontHeight).toInt())
             
-            if (emulator != null && (newColumns != columns || newRows != rows)) {
+            if (newColumns != columns || newRows != rows) {
                 columns = newColumns
                 rows = newRows
-                // resize method in v0.114: resize(int columns, int rows)
-                emulator?.resize(columns, rows)
-            } else if (emulator == null && writeCallback != null) {
-                columns = newColumns
-                rows = newRows
-                initializeEmulator()
+                initializeBuffer()
+                cursorRow = minOf(cursorRow, rows - 1)
+                cursorCol = minOf(cursorCol, columns - 1)
             }
         }
     }
     
     fun appendData(data: ByteArray) {
-        emulator?.append(data, data.size)
+        val text = String(data, Charsets.UTF_8)
+        for (char in text) {
+            processChar(char)
+        }
         invalidate()
+    }
+    
+    private fun processChar(char: Char) {
+        when (escapeState) {
+            EscapeState.NORMAL -> {
+                when (char) {
+                    '\u001B' -> { // ESC
+                        escapeState = EscapeState.ESCAPE
+                        escapeBuffer.clear()
+                    }
+                    '\r' -> { // Carriage return
+                        cursorCol = 0
+                    }
+                    '\n' -> { // Line feed
+                        newLine()
+                    }
+                    '\b' -> { // Backspace
+                        if (cursorCol > 0) cursorCol--
+                    }
+                    '\t' -> { // Tab
+                        val nextTab = ((cursorCol / 8) + 1) * 8
+                        cursorCol = minOf(nextTab, columns - 1)
+                    }
+                    '\u0007' -> { // Bell - ignore
+                    }
+                    else -> {
+                        if (char.code >= 32) { // Printable characters
+                            putChar(char)
+                        }
+                    }
+                }
+            }
+            EscapeState.ESCAPE -> {
+                when (char) {
+                    '[' -> {
+                        escapeState = EscapeState.CSI
+                        escapeBuffer.clear()
+                    }
+                    else -> {
+                        // Unknown escape sequence, return to normal
+                        escapeState = EscapeState.NORMAL
+                    }
+                }
+            }
+            EscapeState.CSI -> {
+                if (char in '0'..'9' || char == ';' || char == '?') {
+                    escapeBuffer.append(char)
+                } else {
+                    // End of CSI sequence
+                    processCSI(char, escapeBuffer.toString())
+                    escapeState = EscapeState.NORMAL
+                }
+            }
+        }
+    }
+    
+    private fun processCSI(command: Char, params: String) {
+        val args = if (params.isEmpty()) listOf(0) else {
+            params.split(';').mapNotNull { it.toIntOrNull() }.ifEmpty { listOf(0) }
+        }
+        
+        when (command) {
+            'A' -> { // Cursor up
+                cursorRow = maxOf(0, cursorRow - maxOf(1, args.getOrElse(0) { 1 }))
+            }
+            'B' -> { // Cursor down
+                cursorRow = minOf(rows - 1, cursorRow + maxOf(1, args.getOrElse(0) { 1 }))
+            }
+            'C' -> { // Cursor forward
+                cursorCol = minOf(columns - 1, cursorCol + maxOf(1, args.getOrElse(0) { 1 }))
+            }
+            'D' -> { // Cursor back
+                cursorCol = maxOf(0, cursorCol - maxOf(1, args.getOrElse(0) { 1 }))
+            }
+            'H', 'f' -> { // Cursor position
+                cursorRow = maxOf(0, minOf(rows - 1, args.getOrElse(0) { 1 } - 1))
+                cursorCol = maxOf(0, minOf(columns - 1, args.getOrElse(1) { 1 } - 1))
+            }
+            'J' -> { // Erase in display
+                when (args.getOrElse(0) { 0 }) {
+                    0 -> clearFromCursor() // Clear from cursor to end
+                    1 -> clearToCursor()   // Clear from start to cursor
+                    2, 3 -> clearScreen()  // Clear entire screen
+                }
+            }
+            'K' -> { // Erase in line
+                when (args.getOrElse(0) { 0 }) {
+                    0 -> clearLineFromCursor() // Clear from cursor to end of line
+                    1 -> clearLineToCursor()   // Clear from start to cursor
+                    2 -> clearLine()           // Clear entire line
+                }
+            }
+            'm' -> { // SGR - Select Graphic Rendition
+                processSGR(args)
+            }
+            'r' -> { // Set scrolling region - ignore for now
+            }
+            's' -> { // Save cursor position - ignore for now
+            }
+            'u' -> { // Restore cursor position - ignore for now
+            }
+        }
+    }
+    
+    private fun processSGR(args: List<Int>) {
+        var i = 0
+        while (i < args.size) {
+            when (val code = args[i]) {
+                0 -> { // Reset
+                    currentFgColor = Color.GREEN
+                    currentBgColor = Color.BLACK
+                    isBold = false
+                }
+                1 -> isBold = true
+                22 -> isBold = false
+                in 30..37 -> { // Foreground color
+                    val colorIndex = code - 30 + (if (isBold) 8 else 0)
+                    currentFgColor = terminalColors.getOrElse(colorIndex) { Color.GREEN }
+                }
+                38 -> { // Extended foreground color
+                    if (i + 2 < args.size && args[i + 1] == 5) {
+                        val colorIndex = args[i + 2]
+                        currentFgColor = get256Color(colorIndex)
+                        i += 2
+                    }
+                }
+                39 -> currentFgColor = Color.GREEN // Default foreground
+                in 40..47 -> { // Background color
+                    currentBgColor = terminalColors.getOrElse(code - 40) { Color.BLACK }
+                }
+                48 -> { // Extended background color
+                    if (i + 2 < args.size && args[i + 1] == 5) {
+                        val colorIndex = args[i + 2]
+                        currentBgColor = get256Color(colorIndex)
+                        i += 2
+                    }
+                }
+                49 -> currentBgColor = Color.BLACK // Default background
+                in 90..97 -> { // Bright foreground colors
+                    currentFgColor = terminalColors.getOrElse(code - 90 + 8) { Color.GREEN }
+                }
+                in 100..107 -> { // Bright background colors
+                    currentBgColor = terminalColors.getOrElse(code - 100 + 8) { Color.BLACK }
+                }
+            }
+            i++
+        }
+    }
+    
+    private fun get256Color(index: Int): Int {
+        return when {
+            index < 16 -> terminalColors.getOrElse(index) { Color.GREEN }
+            index < 232 -> {
+                // 216 color cube (6x6x6)
+                val i = index - 16
+                val r = ((i / 36) % 6) * 51
+                val g = ((i / 6) % 6) * 51
+                val b = (i % 6) * 51
+                Color.rgb(r, g, b)
+            }
+            else -> {
+                // Grayscale (24 shades)
+                val gray = (index - 232) * 10 + 8
+                Color.rgb(gray, gray, gray)
+            }
+        }
+    }
+    
+    private fun putChar(char: Char) {
+        if (cursorRow in 0 until rows && cursorCol in 0 until columns) {
+            screenBuffer[cursorRow][cursorCol] = TerminalCell(char, currentFgColor, currentBgColor)
+            cursorCol++
+            if (cursorCol >= columns) {
+                cursorCol = 0
+                newLine()
+            }
+        }
+    }
+    
+    private fun newLine() {
+        cursorRow++
+        if (cursorRow >= rows) {
+            // Scroll up
+            for (r in 0 until rows - 1) {
+                screenBuffer[r] = screenBuffer[r + 1]
+            }
+            screenBuffer[rows - 1] = Array(columns) { TerminalCell() }
+            cursorRow = rows - 1
+        }
+    }
+    
+    private fun clearScreen() {
+        for (r in 0 until rows) {
+            for (c in 0 until columns) {
+                screenBuffer[r][c] = TerminalCell()
+            }
+        }
+        cursorRow = 0
+        cursorCol = 0
+    }
+    
+    private fun clearFromCursor() {
+        // Clear from cursor to end of line
+        for (c in cursorCol until columns) {
+            screenBuffer[cursorRow][c] = TerminalCell()
+        }
+        // Clear all following lines
+        for (r in cursorRow + 1 until rows) {
+            for (c in 0 until columns) {
+                screenBuffer[r][c] = TerminalCell()
+            }
+        }
+    }
+    
+    private fun clearToCursor() {
+        // Clear all preceding lines
+        for (r in 0 until cursorRow) {
+            for (c in 0 until columns) {
+                screenBuffer[r][c] = TerminalCell()
+            }
+        }
+        // Clear from start of line to cursor
+        for (c in 0..cursorCol) {
+            screenBuffer[cursorRow][c] = TerminalCell()
+        }
+    }
+    
+    private fun clearLine() {
+        for (c in 0 until columns) {
+            screenBuffer[cursorRow][c] = TerminalCell()
+        }
+    }
+    
+    private fun clearLineFromCursor() {
+        for (c in cursorCol until columns) {
+            screenBuffer[cursorRow][c] = TerminalCell()
+        }
+    }
+    
+    private fun clearLineToCursor() {
+        for (c in 0..cursorCol) {
+            screenBuffer[cursorRow][c] = TerminalCell()
+        }
     }
     
     fun cleanup() {
@@ -432,52 +645,36 @@ class SSHTerminalView(context: Context) : View(context) {
         // Draw background
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), backgroundPaint)
         
-        val screen = emulator?.screen ?: return
-        
-        // Draw terminal content - process one row at a time for efficiency
-        for (row in 0 until rows) {
+        // Draw terminal content
+        for (row in 0 until minOf(rows, screenBuffer.size)) {
             val y = row * fontHeight + fontAscent
-            
-            // Get the entire row text at once
-            val rowText = screen.getSelectedText(0, row, columns, row + 1)
-            
-            // Draw each character in the row
-            for (col in 0 until minOf(columns, rowText.length)) {
+            for (col in 0 until minOf(columns, screenBuffer[row].size)) {
+                val cell = screenBuffer[row][col]
                 val x = col * fontWidth
-                val char = rowText[col]
                 
-                if (char != ' ' && char != '\u0000') {
-                    // Get the style for coloring
-                    val style = screen.getStyleAt(row, col)
-                    val fg = com.termux.terminal.TextStyle.decodeForeColor(style)
-                    
-                    // Set foreground color
-                    paint.color = when {
-                        fg >= 0 && fg < terminalColors.size -> terminalColors[fg]
-                        fg == com.termux.terminal.TextStyle.COLOR_INDEX_FOREGROUND -> Color.GREEN
-                        else -> Color.GREEN
-                    }
-                    
-                    canvas.drawText(char.toString(), x, y, paint)
+                // Draw background if not black
+                if (cell.bgColor != Color.BLACK) {
+                    backgroundPaint.color = cell.bgColor
+                    canvas.drawRect(x, row * fontHeight, x + fontWidth, (row + 1) * fontHeight, backgroundPaint)
+                    backgroundPaint.color = Color.BLACK
+                }
+                
+                // Draw character
+                if (cell.char != ' ' && cell.char != '\u0000') {
+                    paint.color = cell.fgColor
+                    canvas.drawText(cell.char.toString(), x, y, paint)
                 }
             }
         }
         
         // Draw cursor
-        if (emulator?.shouldCursorBeVisible() == true) {
-            val cursorX = emulator!!.cursorCol * fontWidth
-            val cursorY = emulator!!.cursorRow * fontHeight
-            
-            paint.color = Color.GREEN
-            paint.style = Paint.Style.FILL
-            canvas.drawRect(
-                cursorX,
-                cursorY,
-                cursorX + fontWidth,
-                cursorY + fontHeight,
-                paint
-            )
-        }
+        val cursorX = cursorCol * fontWidth
+        val cursorY = cursorRow * fontHeight
+        paint.color = Color.GREEN
+        paint.style = Paint.Style.FILL
+        paint.alpha = 128
+        canvas.drawRect(cursorX, cursorY, cursorX + fontWidth, cursorY + fontHeight, paint)
+        paint.alpha = 255
     }
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -581,21 +778,6 @@ class SSHTerminalView(context: Context) : View(context) {
         }
         return super.onKeyDown(keyCode, event)
     }
-}
-
-/**
- * Terminal output implementation that writes to SSH
- */
-class SSHTerminalOutput(private val writeCallback: (ByteArray) -> Unit) : TerminalOutput() {
-    override fun write(data: ByteArray, offset: Int, count: Int) {
-        writeCallback(data.copyOfRange(offset, offset + count))
-    }
-    
-    override fun titleChanged(oldTitle: String?, newTitle: String?) {}
-    override fun onCopyTextToClipboard(text: String?) {}
-    override fun onPasteTextFromClipboard() {}
-    override fun onBell() {}
-    override fun onColorsChanged() {}
 }
 
 private fun getExecutionCommand(fileName: String, remotePath: String): String {

@@ -54,7 +54,6 @@ composeDnd = "0.4.0"
 androidsvgAar = "1.4"
 commonsCompress = "1.26.0"
 jsch = "0.1.55"
-termuxTerminalEmulator = "0.114"
 
 [libraries]
 androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentfile" }
@@ -138,7 +137,6 @@ androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-p
 androidsvg-aar = { group = "com.caverock", name = "androidsvg-aar", version.ref = "androidsvgAar" }
 commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }
 jsch = { group = "com.jcraft", name = "jsch", version.ref = "jsch" }
-termux-terminal-emulator = { module = "com.termux:terminal-emulator", version.ref = "termuxTerminalEmulator" }
 
 [plugins]
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

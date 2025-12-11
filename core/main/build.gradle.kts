@@ -128,9 +128,6 @@ dependencies {
     
     // SSH support for VPS code runner
     implementation(libs.jsch)
-    
-    // Terminal emulator for SSH sessions (ANSI escape code processing)
-    implementation(libs.termux.terminal.emulator)
 }
 
 abstract class GenerateSupportedLocales : DefaultTask() {
