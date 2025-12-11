@@ -44,12 +44,14 @@ class SSHConnectionManager(private val config: SSHServerConfig) {
                     // Password authentication
                 }
                 SSHAuthType.KEY -> {
-                    // Key-based authentication
+                    // Key-based authentication using byte array (more secure)
                     config.privateKey?.let { key ->
-                        val keyFile = File.createTempFile("ssh_key", ".pem")
-                        keyFile.writeText(key)
-                        jsch.addIdentity(keyFile.absolutePath)
-                        keyFile.delete()
+                        jsch.addIdentity(
+                            "key-${config.id}",
+                            key.toByteArray(),
+                            null,
+                            null
+                        )
                     }
                 }
             }
@@ -60,7 +62,9 @@ class SSHConnectionManager(private val config: SSHServerConfig) {
                     setPassword(config.password)
                 }
                 
-                // Disable strict host key checking for simplicity
+                // Disable strict host key checking
+                // WARNING: This allows man-in-the-middle attacks. In production,
+                // implement proper host key verification.
                 setConfig("StrictHostKeyChecking", "no")
                 
                 // Set timeout
@@ -115,7 +119,7 @@ class SSHConnectionManager(private val config: SSHServerConfig) {
             
             // Wait for command to complete
             while (!channel.isClosed) {
-                Thread.sleep(100)
+                kotlinx.coroutines.delay(100)
             }
             
             val exitStatus = channel.exitStatus

@@ -128,28 +128,30 @@ fun TerminalScreen(
                     }
                 }
                 
-                // Start reading output
-                DefaultScope.launch {
+                // Start reading output using blocking I/O
+                DefaultScope.launch(Dispatchers.IO) {
                     try {
                         channel?.let { ch ->
-                            val reader = BufferedReader(InputStreamReader(ch.inputStream))
-                            val buffer = CharArray(1024)
+                            val inputStream = ch.inputStream
+                            val buffer = ByteArray(4096)
                             
                             while (ch.isOpen() && isConnected) {
                                 try {
-                                    val available = ch.inputStream.available()
-                                    if (available > 0) {
-                                        val count = reader.read(buffer, 0, minOf(available, buffer.size))
-                                        if (count > 0) {
-                                            val output = String(buffer, 0, count)
-                                            withContext(Dispatchers.Main) {
-                                                terminalOutput += output
-                                            }
+                                    // Blocking read - more efficient and reliable
+                                    val count = inputStream.read(buffer)
+                                    if (count > 0) {
+                                        val output = String(buffer, 0, count)
+                                        withContext(Dispatchers.Main) {
+                                            terminalOutput += output
                                         }
+                                    } else if (count == -1) {
+                                        // End of stream
+                                        break
                                     }
-                                    kotlinx.coroutines.delay(50)
                                 } catch (e: Exception) {
-                                    break
+                                    if (!ch.isOpen() || !isConnected) {
+                                        break
+                                    }
                                 }
                             }
                         }
@@ -319,7 +321,7 @@ private fun getExecutionCommand(fileName: String, remotePath: String): String {
         fileName.endsWith(".php") -> "php $remotePath"
         fileName.endsWith(".pl") -> "perl $remotePath"
         fileName.endsWith(".go") -> "go run $remotePath"
-        fileName.endsWith(".rs") -> "rustc $remotePath && ${remotePath.removeSuffix(".rs")}"
+        fileName.endsWith(".rs") -> "rustc $remotePath -o ${remotePath.removeSuffix(".rs")} && ${remotePath.removeSuffix(".rs")}"
         fileName.endsWith(".c") -> "gcc $remotePath -o ${remotePath.removeSuffix(".c")} && ${remotePath.removeSuffix(".c")}"
         fileName.endsWith(".cpp") || fileName.endsWith(".cc") -> 
             "g++ $remotePath -o ${remotePath.substringBeforeLast(".")} && ${remotePath.substringBeforeLast(".")}"

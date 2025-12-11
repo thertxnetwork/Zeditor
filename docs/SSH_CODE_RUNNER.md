@@ -158,12 +158,16 @@ Use the **Test Connection** button in the server configuration dialog to verify:
 
 ## Security Considerations
 
-- **SSH Keys**: Use SSH key authentication instead of passwords when possible
-- **Key Management**: Keep your private keys secure and never share them
+⚠️ **Important Security Warnings**:
+
+- **Host Key Verification**: Currently, the app disables strict host key checking for ease of use. This makes connections vulnerable to man-in-the-middle attacks. Only connect to servers you trust over secure networks.
+- **SSH Keys**: Use SSH key authentication instead of passwords when possible for better security
+- **Key Management**: Keep your private keys secure and never share them. Keys are stored in app data.
 - **Server Access**: Only connect to servers you own or have permission to use
-- **Network**: Use secure networks when connecting to your servers
+- **Network**: Always use secure, trusted networks when connecting to your servers
 - **Passwords**: Use strong passwords and consider using a password manager
 - **Firewall**: Configure your server's firewall to only allow SSH from trusted IPs
+- **Credentials Storage**: Server credentials are stored locally in JSON format. Ensure your device is secured with a lock screen.
 
 ## Tips
 
