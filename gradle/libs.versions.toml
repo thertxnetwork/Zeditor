@@ -1,5 +1,5 @@
 [versions]
-agp = "8.5.2"
+agp = "8.9.1"
 annotation = "1.9.1"
 anrwatchdog = "1.4.0"
 luaj = "3.0.1"
