@@ -73,6 +73,31 @@ class JavaScriptRunner : LanguageRunner() {
         isCurrentlyRunning = false
     }
 
+    private fun setupConsole(runtime: V8, outputBuffer: StringBuilder): V8Object {
+        val console = V8Object(runtime)
+        
+        // Helper to create console methods
+        fun addConsoleMethod(methodName: String, prefix: String = "") {
+            console.registerJavaMethod({ _, parameters ->
+                val messages = mutableListOf<String>()
+                for (i in 0 until parameters.length()) {
+                    messages.add(parameters.get(i).toString())
+                }
+                if (prefix.isNotEmpty()) {
+                    outputBuffer.append(prefix).append(" ")
+                }
+                outputBuffer.append(messages.joinToString(" ")).append("\n")
+            }, methodName)
+        }
+        
+        addConsoleMethod("log")
+        addConsoleMethod("error", "[ERROR]")
+        addConsoleMethod("warn", "[WARN]")
+        addConsoleMethod("info", "[INFO]")
+        
+        return console
+    }
+    
     override suspend fun executeCode(code: String): ExecutionResult {
         return withContext(Dispatchers.IO) {
             val startTime = System.currentTimeMillis()
@@ -82,45 +107,8 @@ class JavaScriptRunner : LanguageRunner() {
                 v8Runtime = V8.createV8Runtime()
                 
                 v8Runtime?.let { runtime ->
-                    // Create console object
-                    val console = V8Object(runtime)
-                    
-                    // Add console.log
-                    console.registerJavaMethod({ receiver, parameters ->
-                        val messages = mutableListOf<String>()
-                        for (i in 0 until parameters.length()) {
-                            messages.add(parameters.get(i).toString())
-                        }
-                        outputBuffer.append(messages.joinToString(" ")).append("\n")
-                    }, "log")
-                    
-                    // Add console.error
-                    console.registerJavaMethod({ receiver, parameters ->
-                        val messages = mutableListOf<String>()
-                        for (i in 0 until parameters.length()) {
-                            messages.add(parameters.get(i).toString())
-                        }
-                        outputBuffer.append("[ERROR] ").append(messages.joinToString(" ")).append("\n")
-                    }, "error")
-                    
-                    // Add console.warn
-                    console.registerJavaMethod({ receiver, parameters ->
-                        val messages = mutableListOf<String>()
-                        for (i in 0 until parameters.length()) {
-                            messages.add(parameters.get(i).toString())
-                        }
-                        outputBuffer.append("[WARN] ").append(messages.joinToString(" ")).append("\n")
-                    }, "warn")
-                    
-                    // Add console.info
-                    console.registerJavaMethod({ receiver, parameters ->
-                        val messages = mutableListOf<String>()
-                        for (i in 0 until parameters.length()) {
-                            messages.add(parameters.get(i).toString())
-                        }
-                        outputBuffer.append("[INFO] ").append(messages.joinToString(" ")).append("\n")
-                    }, "info")
-                    
+                    // Setup console object with methods
+                    val console = setupConsole(runtime, outputBuffer)
                     runtime.add("console", console)
                     console.release()
                     
