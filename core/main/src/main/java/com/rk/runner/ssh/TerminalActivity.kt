@@ -95,6 +95,8 @@ fun TerminalScreen(
     val handleCommandInput: () -> Unit = {
         if (inputText.isNotBlank()) {
             val cmd = inputText
+            inputText = ""
+            terminalOutput += "$ $cmd\n"
             DefaultScope.launch(Dispatchers.IO) {
                 try {
                     shellChannel?.outputStream?.write("$cmd\n".toByteArray())
@@ -105,8 +107,6 @@ fun TerminalScreen(
                     }
                 }
             }
-            terminalOutput += "$ $cmd\n"
-            inputText = ""
         }
     }
     
