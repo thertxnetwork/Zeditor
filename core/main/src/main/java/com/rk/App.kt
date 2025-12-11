@@ -5,8 +5,6 @@ import android.os.Build
 import android.os.StrictMode
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-import com.chaquo.python.Python
-import com.chaquo.python.android.AndroidPlatform
 import com.github.anrwatchdog.ANRWatchDog
 import com.rk.activities.main.SessionManager
 import com.rk.crashhandler.CrashHandler
@@ -61,11 +59,6 @@ class App : Application() {
         val currentLocale = Locale.forLanguageTag(Settings.currentLang)
         val appLocale = LocaleListCompat.create(currentLocale)
         AppCompatDelegate.setApplicationLocales(appLocale)
-
-        // Initialize Python interpreter (Chaquopy)
-        if (!Python.isStarted()) {
-            Python.start(AndroidPlatform(this))
-        }
 
         GlobalScope.launch(Dispatchers.IO) {
             launch { Editor.initGrammarRegistry() }

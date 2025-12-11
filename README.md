@@ -32,7 +32,7 @@ Or for debug builds:
   - **HTML/SVG** - Local web server preview
   - **Markdown** - Built-in preview
 - **Language Support Info** - Guidance for running other languages:
-  - Python (via Chaquopy, p4a, or Termux)
+  - Python (via Termux)
   - C/C++ (via NDK or Termux)
   - Go (via gomobile or Termux)
   - Rust (via cargo-ndk or Termux)

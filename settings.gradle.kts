@@ -14,7 +14,6 @@ pluginManagement {
     }
     plugins {
         kotlin("jvm") version "2.2.20"
-        id("com.chaquo.python") version "17.0.0"
     }
 }
 plugins {

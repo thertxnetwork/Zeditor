@@ -11,7 +11,6 @@ import com.rk.runner.runners.languages.KotlinScriptRunner
 import com.rk.runner.runners.languages.LuaRunner
 import com.rk.runner.runners.languages.PerlRunner
 import com.rk.runner.runners.languages.PhpRunner
-import com.rk.runner.runners.languages.PythonRunner
 import com.rk.runner.runners.languages.RLangRunner
 import com.rk.runner.runners.languages.RubyRunner
 import com.rk.runner.runners.languages.RustRunner
@@ -71,9 +70,6 @@ object Runner {
             // ========================================
             // Info runners (show setup instructions)
             // ========================================
-
-            // Python - Info about Chaquopy, p4a, Termux
-            add(object : RunnerBuilder(regex = Regex(".*\\.py$"), clazz = PythonRunner::class.java) {})
 
             // C/C++ - Info about NDK, Termux
             add(
