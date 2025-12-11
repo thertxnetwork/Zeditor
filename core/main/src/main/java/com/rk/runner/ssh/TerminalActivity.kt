@@ -505,7 +505,7 @@ class SSHTerminalView(context: Context) : View(context) {
                 }
                 1 -> isBold = true
                 22 -> isBold = false
-                in 30..37 -> { // Foreground color
+                in 30..37 -> { // Foreground color (normal, bold makes them bright)
                     val colorIndex = code - 30 + (if (isBold) 8 else 0)
                     currentFgColor = terminalColors.getOrElse(colorIndex) { Color.GREEN }
                 }
@@ -517,7 +517,7 @@ class SSHTerminalView(context: Context) : View(context) {
                     }
                 }
                 39 -> currentFgColor = Color.GREEN // Default foreground
-                in 40..47 -> { // Background color
+                in 40..47 -> { // Background color (bold doesn't affect background)
                     currentBgColor = terminalColors.getOrElse(code - 40) { Color.BLACK }
                 }
                 48 -> { // Extended background color
@@ -528,7 +528,7 @@ class SSHTerminalView(context: Context) : View(context) {
                     }
                 }
                 49 -> currentBgColor = Color.BLACK // Default background
-                in 90..97 -> { // Bright foreground colors
+                in 90..97 -> { // Bright foreground colors (already bright, ignore bold)
                     currentFgColor = terminalColors.getOrElse(code - 90 + 8) { Color.GREEN }
                 }
                 in 100..107 -> { // Bright background colors
@@ -572,11 +572,16 @@ class SSHTerminalView(context: Context) : View(context) {
     private fun newLine() {
         cursorRow++
         if (cursorRow >= rows) {
-            // Scroll up
+            // Scroll up - copy each row properly to avoid aliasing
             for (r in 0 until rows - 1) {
-                screenBuffer[r] = screenBuffer[r + 1]
+                for (c in 0 until columns) {
+                    screenBuffer[r][c] = screenBuffer[r + 1][c].copy()
+                }
             }
-            screenBuffer[rows - 1] = Array(columns) { TerminalCell() }
+            // Clear the last row
+            for (c in 0 until columns) {
+                screenBuffer[rows - 1][c] = TerminalCell()
+            }
             cursorRow = rows - 1
         }
     }
@@ -592,7 +597,7 @@ class SSHTerminalView(context: Context) : View(context) {
     }
     
     private fun clearFromCursor() {
-        // Clear from cursor to end of line
+        // Clear from cursor to end of line (inclusive of cursor position)
         for (c in cursorCol until columns) {
             screenBuffer[cursorRow][c] = TerminalCell()
         }
@@ -611,8 +616,8 @@ class SSHTerminalView(context: Context) : View(context) {
                 screenBuffer[r][c] = TerminalCell()
             }
         }
-        // Clear from start of line to cursor
-        for (c in 0..cursorCol) {
+        // Clear from start of line to cursor (exclusive of cursor position per ANSI standard)
+        for (c in 0 until cursorCol) {
             screenBuffer[cursorRow][c] = TerminalCell()
         }
     }
@@ -630,7 +635,8 @@ class SSHTerminalView(context: Context) : View(context) {
     }
     
     private fun clearLineToCursor() {
-        for (c in 0..cursorCol) {
+        // Clear from start to cursor (exclusive of cursor position per ANSI standard)
+        for (c in 0 until cursorCol) {
             screenBuffer[cursorRow][c] = TerminalCell()
         }
     }
