@@ -121,8 +121,10 @@ fun TerminalScreen(
                         
                         // Execute based on file extension
                         val command = getExecutionCommand(fileName, remotePath)
-                        channel?.outputStream?.write("$command\n".toByteArray())
-                        channel?.outputStream?.flush()
+                        withContext(Dispatchers.IO) {
+                            channel?.outputStream?.write("$command\n".toByteArray())
+                            channel?.outputStream?.flush()
+                        }
                     } else {
                         terminalOutput += "Error uploading file: ${uploadResult.exceptionOrNull()?.message}\n"
                     }
@@ -266,7 +268,7 @@ fun TerminalScreen(
                             keyboardActions = KeyboardActions(
                                 onSend = {
                                     if (inputText.isNotBlank()) {
-                                        DefaultScope.launch {
+                                        DefaultScope.launch(Dispatchers.IO) {
                                             try {
                                                 shellChannel?.outputStream?.write("$inputText\n".toByteArray())
                                                 shellChannel?.outputStream?.flush()
@@ -287,7 +289,7 @@ fun TerminalScreen(
                         Button(
                             onClick = {
                                 if (inputText.isNotBlank()) {
-                                    DefaultScope.launch {
+                                    DefaultScope.launch(Dispatchers.IO) {
                                         try {
                                             shellChannel?.outputStream?.write("$inputText\n".toByteArray())
                                             shellChannel?.outputStream?.flush()
