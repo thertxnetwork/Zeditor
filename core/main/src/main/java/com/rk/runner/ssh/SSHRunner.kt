@@ -56,7 +56,7 @@ class SSHRunner(private val serverConfig: SSHServerConfig? = null) : RunnerImpl(
         // Open terminal with file
         val intent = Intent(context, TerminalActivity::class.java).apply {
             putExtra(TerminalActivity.EXTRA_SERVER_ID, serverToUse.id)
-            putExtra(TerminalActivity.EXTRA_FILE_PATH, fileObject.getPath())
+            putExtra(TerminalActivity.EXTRA_FILE_PATH, fileObject.getAbsolutePath())
             putExtra(TerminalActivity.EXTRA_FILE_NAME, fileObject.getName())
         }
         context.startActivity(intent)

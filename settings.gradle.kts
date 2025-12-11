@@ -11,6 +11,9 @@ pluginManagement {
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots")
 
         maven("https://repo.eclipse.org/content/groups/releases/")
+        // Fallback mirrors for restricted network environments
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
     }
     plugins {
         kotlin("jvm") version "2.2.20"
@@ -32,6 +35,9 @@ dependencyResolutionManagement {
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots")
 
         maven("https://repo.eclipse.org/content/groups/releases/")
+        // Fallback mirrors for restricted network environments
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
     }
 }
 

@@ -16,4 +16,9 @@ subprojects {
             maxWidth.set(120)
         }
     }
+    
+    // Exclude old kotlin-android-extensions-runtime to prevent duplicate classes
+    configurations.all {
+        exclude(group = "org.jetbrains.kotlin", module = "kotlin-android-extensions-runtime")
+    }
 }
