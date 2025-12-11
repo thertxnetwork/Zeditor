@@ -83,7 +83,14 @@ class JavaScriptRunner : LanguageRunner() {
                 override fun invoke(receiver: V8Object, parameters: V8Array): Any? {
                     val messages = mutableListOf<String>()
                     for (i in 0 until parameters.length()) {
-                        messages.add(parameters.get(i).toString())
+                        val value = parameters.get(i)
+                        // Convert V8 values to strings, handling different types
+                        val stringValue = when {
+                            value == null || value.toString() == "null" -> "null"
+                            value.toString() == "undefined" -> "undefined"
+                            else -> value.toString()
+                        }
+                        messages.add(stringValue)
                     }
                     if (prefix.isNotEmpty()) {
                         outputBuffer.append(prefix).append(" ")
@@ -107,6 +114,7 @@ class JavaScriptRunner : LanguageRunner() {
             val startTime = System.currentTimeMillis()
             val outputBuffer = StringBuilder()
             var console: V8Object? = null
+            var scriptResult: Any? = null
             
             try {
                 v8Runtime = V8.createV8Runtime()
@@ -117,15 +125,15 @@ class JavaScriptRunner : LanguageRunner() {
                     runtime.add("console", console)
                     
                     // Execute the code
-                    val result = runtime.executeScript(code)
+                    scriptResult = runtime.executeScript(code)
                     
                     val executionTime = System.currentTimeMillis() - startTime
                     val output = outputBuffer.toString()
                     
                     val finalOutput = if (output.isNotEmpty()) {
                         output.trimEnd()
-                    } else if (result != null && result.toString() != "undefined") {
-                        result.toString()
+                    } else if (scriptResult != null && scriptResult.toString() != "undefined") {
+                        scriptResult.toString()
                     } else {
                         "(Execution completed in ${executionTime}ms)"
                     }
@@ -146,13 +154,14 @@ class JavaScriptRunner : LanguageRunner() {
                 val executionTime = System.currentTimeMillis() - startTime
                 val output = outputBuffer.toString()
                 ExecutionResult(
-                    output = output,
+                    output = if (output.isNotEmpty()) output.trimEnd() else "",
                     errorOutput = "JavaScript Error: ${e.message}",
                     isSuccess = false,
                     executionTimeMs = executionTime
                 )
             } finally {
                 try {
+                    // Release V8 objects in correct order
                     console?.release()
                     v8Runtime?.release()
                 } catch (_: Exception) {}
