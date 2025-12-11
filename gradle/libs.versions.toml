@@ -3,7 +3,7 @@ agp = "8.9.1"
 annotation = "1.9.1"
 anrwatchdog = "1.4.0"
 luaj = "3.0.1"
-j2v8 = "4.8.0"
+j2v8 = "6.3.4"
 groovy = "3.0.19"
 appcompat = "1.7.1"
 browser = "1.9.0"
@@ -125,7 +125,7 @@ regex-re2j = { module = "io.github.dingyi222666.regex-lib:regex-lib-re2j", versi
 tests-google-truth = { module = "com.google.truth:truth", version = "1.4.5" }
 tests-robolectric = { module = "org.robolectric:robolectric", version = "4.16" }
 luaj-jse = { module = "org.luaj:luaj-jse", version.ref = "luaj" }
-j2v8-android = { module = "com.eclipsesource.j2v8:j2v8_android", version.ref = "j2v8" }
+j2v8 = { module = "com.eclipsesource.j2v8:j2v8", version.ref = "j2v8" }
 groovy = { module = "org.codehaus.groovy:groovy", version.ref = "groovy" }
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
