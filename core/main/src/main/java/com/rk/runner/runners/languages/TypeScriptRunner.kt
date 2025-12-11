@@ -7,7 +7,6 @@ import com.eclipsesource.v8.JavaCallback
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
-import com.eclipsesource.v8.V8Value
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.resources.drawables
@@ -97,21 +96,7 @@ class TypeScriptRunner : LanguageRunner() {
                 override fun invoke(receiver: V8Object, parameters: V8Array): Any? {
                     val messages = mutableListOf<String>()
                     for (i in 0 until parameters.length()) {
-                        // Get the value type and convert appropriately
-                        val stringValue = try {
-                            when (parameters.getType(i)) {
-                                V8Value.STRING -> parameters.getString(i)
-                                V8Value.INTEGER -> parameters.getInteger(i).toString()
-                                V8Value.DOUBLE -> parameters.getDouble(i).toString()
-                                V8Value.BOOLEAN -> parameters.getBoolean(i).toString()
-                                V8Value.NULL -> "null"
-                                V8Value.UNDEFINED -> "undefined"
-                                else -> parameters.get(i).toString()
-                            }
-                        } catch (e: Exception) {
-                            parameters.get(i).toString()
-                        }
-                        messages.add(stringValue)
+                        messages.add(parameters.get(i).toString())
                     }
                     if (prefix.isNotEmpty()) {
                         outputBuffer.append(prefix).append(" ")
@@ -135,7 +120,6 @@ class TypeScriptRunner : LanguageRunner() {
             val startTime = System.currentTimeMillis()
             val outputBuffer = StringBuilder()
             var console: V8Object? = null
-            var scriptResult: Any? = null
             
             try {
                 v8Runtime = V8.createV8Runtime()
@@ -146,15 +130,15 @@ class TypeScriptRunner : LanguageRunner() {
                     runtime.add("console", console)
                     
                     // Execute the code
-                    scriptResult = runtime.executeScript(code)
+                    val result = runtime.executeScript(code)
                     
                     val executionTime = System.currentTimeMillis() - startTime
                     val output = outputBuffer.toString()
                     
                     val finalOutput = if (output.isNotEmpty()) {
                         output.trimEnd()
-                    } else if (scriptResult != null && scriptResult.toString() != "undefined") {
-                        scriptResult.toString()
+                    } else if (result != null && result.toString() != "undefined") {
+                        result.toString()
                     } else {
                         "(Execution completed in ${executionTime}ms)"
                     }
@@ -175,14 +159,13 @@ class TypeScriptRunner : LanguageRunner() {
                 val executionTime = System.currentTimeMillis() - startTime
                 val output = outputBuffer.toString()
                 ExecutionResult(
-                    output = if (output.isNotEmpty()) output.trimEnd() else "",
+                    output = output,
                     errorOutput = "TypeScript Error: ${e.message}",
                     isSuccess = false,
                     executionTimeMs = executionTime
                 )
             } finally {
                 try {
-                    // Release V8 objects in correct order
                     console?.release()
                     v8Runtime?.release()
                 } catch (_: Exception) {}
