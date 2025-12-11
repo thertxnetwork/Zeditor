@@ -7,6 +7,7 @@ import com.eclipsesource.v8.JavaCallback
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
+import com.eclipsesource.v8.V8Value
 import com.rk.file.FileObject
 import com.rk.file.FileWrapper
 import com.rk.resources.drawables
@@ -96,12 +97,19 @@ class TypeScriptRunner : LanguageRunner() {
                 override fun invoke(receiver: V8Object, parameters: V8Array): Any? {
                     val messages = mutableListOf<String>()
                     for (i in 0 until parameters.length()) {
-                        val value = parameters.get(i)
-                        // Convert V8 values to strings, handling different types
-                        val stringValue = when {
-                            value == null || value.toString() == "null" -> "null"
-                            value.toString() == "undefined" -> "undefined"
-                            else -> value.toString()
+                        // Get the value type and convert appropriately
+                        val stringValue = try {
+                            when (parameters.getType(i)) {
+                                com.eclipsesource.v8.V8Value.STRING -> parameters.getString(i)
+                                com.eclipsesource.v8.V8Value.INTEGER -> parameters.getInteger(i).toString()
+                                com.eclipsesource.v8.V8Value.DOUBLE -> parameters.getDouble(i).toString()
+                                com.eclipsesource.v8.V8Value.BOOLEAN -> parameters.getBoolean(i).toString()
+                                com.eclipsesource.v8.V8Value.NULL -> "null"
+                                com.eclipsesource.v8.V8Value.UNDEFINED -> "undefined"
+                                else -> parameters.get(i).toString()
+                            }
+                        } catch (e: Exception) {
+                            parameters.get(i).toString()
                         }
                         messages.add(stringValue)
                     }
