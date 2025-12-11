@@ -1,6 +1,10 @@
 package com.rk.runner
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -9,9 +13,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -67,6 +73,8 @@ fun ExecutionScreen(
     engineInfo: String,
     onBackPressed: () -> Unit
 ) {
+    val context = LocalContext.current
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -76,6 +84,35 @@ fun ExecutionScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            val textToCopy = buildString {
+                                append("=== $title ===\n\n")
+                                append("Status: ${if (isSuccess) "Success" else "Failed"}\n")
+                                append("Engine: $engineInfo\n")
+                                append("Execution Time: ${executionTimeMs}ms\n\n")
+                                if (output.isNotEmpty()) {
+                                    append("Output:\n$output\n\n")
+                                }
+                                if (error.isNotEmpty()) {
+                                    append("Error:\n$error\n")
+                                }
+                            }
+                            
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Execution Results", textToCopy)
+                            clipboard.setPrimaryClip(clip)
+                            
+                            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Icon(
+                            Icons.Filled.ContentCopy,
+                            contentDescription = "Copy results"
                         )
                     }
                 }
