@@ -86,7 +86,7 @@ class JavaScriptRunner : LanguageRunner() {
                     val console = V8Object(runtime)
                     
                     // Add console.log
-                    runtime.registerJavaMethod({ receiver, parameters ->
+                    console.registerJavaMethod({ receiver, parameters ->
                         val messages = mutableListOf<String>()
                         for (i in 0 until parameters.length()) {
                             messages.add(parameters.get(i).toString())
@@ -95,7 +95,7 @@ class JavaScriptRunner : LanguageRunner() {
                     }, "log")
                     
                     // Add console.error
-                    runtime.registerJavaMethod({ receiver, parameters ->
+                    console.registerJavaMethod({ receiver, parameters ->
                         val messages = mutableListOf<String>()
                         for (i in 0 until parameters.length()) {
                             messages.add(parameters.get(i).toString())
@@ -104,7 +104,7 @@ class JavaScriptRunner : LanguageRunner() {
                     }, "error")
                     
                     // Add console.warn
-                    runtime.registerJavaMethod({ receiver, parameters ->
+                    console.registerJavaMethod({ receiver, parameters ->
                         val messages = mutableListOf<String>()
                         for (i in 0 until parameters.length()) {
                             messages.add(parameters.get(i).toString())
@@ -113,39 +113,6 @@ class JavaScriptRunner : LanguageRunner() {
                     }, "warn")
                     
                     // Add console.info
-                    runtime.registerJavaMethod({ receiver, parameters ->
-                        val messages = mutableListOf<String>()
-                        for (i in 0 until parameters.length()) {
-                            messages.add(parameters.get(i).toString())
-                        }
-                        outputBuffer.append("[INFO] ").append(messages.joinToString(" ")).append("\n")
-                    }, "info")
-                    
-                    // Create console object with methods
-                    console.registerJavaMethod({ receiver, parameters ->
-                        val messages = mutableListOf<String>()
-                        for (i in 0 until parameters.length()) {
-                            messages.add(parameters.get(i).toString())
-                        }
-                        outputBuffer.append(messages.joinToString(" ")).append("\n")
-                    }, "log")
-                    
-                    console.registerJavaMethod({ receiver, parameters ->
-                        val messages = mutableListOf<String>()
-                        for (i in 0 until parameters.length()) {
-                            messages.add(parameters.get(i).toString())
-                        }
-                        outputBuffer.append("[ERROR] ").append(messages.joinToString(" ")).append("\n")
-                    }, "error")
-                    
-                    console.registerJavaMethod({ receiver, parameters ->
-                        val messages = mutableListOf<String>()
-                        for (i in 0 until parameters.length()) {
-                            messages.add(parameters.get(i).toString())
-                        }
-                        outputBuffer.append("[WARN] ").append(messages.joinToString(" ")).append("\n")
-                    }, "warn")
-                    
                     console.registerJavaMethod({ receiver, parameters ->
                         val messages = mutableListOf<String>()
                         for (i in 0 until parameters.length()) {
