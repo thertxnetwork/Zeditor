@@ -1,39 +1,39 @@
 package com.rk.runner.ssh
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.graphics.Typeface
 import android.os.Bundle
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import com.rk.DefaultScope
 import com.rk.theme.XedTheme
+import com.termux.terminal.TerminalSession
+import com.termux.terminal.TerminalSessionClient
+import com.termux.view.TerminalView
+import com.termux.view.TerminalViewClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 class TerminalActivity : ComponentActivity() {
     
@@ -85,32 +85,128 @@ fun TerminalScreen(
     onBackPressed: () -> Unit
 ) {
     val context = LocalContext.current
-    var terminalOutput by remember { mutableStateOf("Connecting to ${server.name}...\n") }
-    var inputText by remember { mutableStateOf("") }
+    var statusText by remember { mutableStateOf("Connecting to ${server.name}...") }
     var isConnected by remember { mutableStateOf(false) }
     var connectionManager by remember { mutableStateOf<SSHConnectionManager?>(null) }
-    var shellChannel by remember { mutableStateOf<ShellChannel?>(null) }
+    var sshTerminalSession by remember { mutableStateOf<SSHTerminalSession?>(null) }
+    var terminalView by remember { mutableStateOf<TerminalView?>(null) }
     
-    // Helper function to handle command input
-    val handleCommandInput: () -> Unit = {
-        if (inputText.isNotBlank()) {
-            val cmd = inputText
-            inputText = ""
-            terminalOutput += "$ $cmd\n"
-            DefaultScope.launch(Dispatchers.IO) {
-                try {
-                    shellChannel?.outputStream?.write("$cmd\n".toByteArray())
-                    shellChannel?.outputStream?.flush()
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        terminalOutput += "\nError sending command: ${e.message}\n"
-                    }
+    // Terminal session client implementation
+    val terminalSessionClient = remember {
+        object : TerminalSessionClient {
+            override fun onTextChanged(changedSession: TerminalSession?) {
+                terminalView?.onScreenUpdated()
+            }
+            
+            override fun onTitleChanged(changedSession: TerminalSession?) {}
+            
+            override fun onSessionFinished(finishedSession: TerminalSession?) {
+                isConnected = false
+                statusText = "Session ended"
+            }
+            
+            override fun onCopyTextToClipboard(session: TerminalSession?, text: String?) {
+                text?.let {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("terminal", it))
                 }
             }
+            
+            override fun onPasteTextFromClipboard(session: TerminalSession?) {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.primaryClip?.getItemAt(0)?.text?.toString()?.let { text ->
+                    sshTerminalSession?.emulator?.paste(text)
+                }
+            }
+            
+            override fun onBell(session: TerminalSession?) {}
+            
+            override fun onColorsChanged(session: TerminalSession?) {
+                terminalView?.invalidate()
+            }
+            
+            override fun onTerminalCursorStateChange(state: Boolean) {}
+            
+            override fun setTerminalShellPid(session: TerminalSession?, pid: Int) {}
+            
+            override fun getTerminalCursorStyle(): Int = 0
+            
+            override fun logError(tag: String?, message: String?) {}
+            
+            override fun logWarn(tag: String?, message: String?) {}
+            
+            override fun logInfo(tag: String?, message: String?) {}
+            
+            override fun logDebug(tag: String?, message: String?) {}
+            
+            override fun logVerbose(tag: String?, message: String?) {}
+            
+            override fun logStackTraceWithMessage(tag: String?, message: String?, e: Exception?) {}
+            
+            override fun logStackTrace(tag: String?, e: Exception?) {}
         }
     }
     
-    // Connect on start
+    // Terminal view client implementation
+    val terminalViewClient = remember {
+        object : TerminalViewClient {
+            override fun onScale(scale: Float): Float = scale
+            
+            override fun onSingleTapUp(e: MotionEvent?) {
+                // Show keyboard when terminal is tapped
+                terminalView?.let { view ->
+                    val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                    imm.showSoftInput(view, 0)
+                }
+            }
+            
+            override fun shouldBackButtonBeMappedToEscape(): Boolean = false
+            
+            override fun shouldEnforceCharBasedInput(): Boolean = true
+            
+            override fun shouldUseCtrlSpaceWorkaround(): Boolean = false
+            
+            override fun isTerminalViewSelected(): Boolean = true
+            
+            override fun copyModeChanged(copyMode: Boolean) {}
+            
+            override fun onKeyDown(keyCode: Int, e: KeyEvent?, session: TerminalSession?): Boolean = false
+            
+            override fun onKeyUp(keyCode: Int, e: KeyEvent?): Boolean = false
+            
+            override fun onLongPress(event: MotionEvent?): Boolean = false
+            
+            override fun readControlKey(): Boolean = false
+            
+            override fun readAltKey(): Boolean = false
+            
+            override fun readShiftKey(): Boolean = false
+            
+            override fun readFnKey(): Boolean = false
+            
+            override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession?): Boolean = false
+            
+            override fun onEmulatorSet() {
+                terminalView?.setTerminalCursorBlinkerState(true, true)
+            }
+            
+            override fun logError(tag: String?, message: String?) {}
+            
+            override fun logWarn(tag: String?, message: String?) {}
+            
+            override fun logInfo(tag: String?, message: String?) {}
+            
+            override fun logDebug(tag: String?, message: String?) {}
+            
+            override fun logVerbose(tag: String?, message: String?) {}
+            
+            override fun logStackTraceWithMessage(tag: String?, message: String?, e: Exception?) {}
+            
+            override fun logStackTrace(tag: String?, e: Exception?) {}
+        }
+    }
+    
+    // Connect and set up terminal on start
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             val manager = SSHConnectionManager(server)
@@ -121,102 +217,74 @@ fun TerminalScreen(
             val connectResult = manager.connect()
             if (connectResult.isSuccess) {
                 withContext(Dispatchers.Main) {
-                    terminalOutput += "Connected to ${server.getDisplayInfo()}\n"
+                    statusText = "Connected to ${server.getDisplayInfo()}"
                 }
                 
                 // Open shell
                 val shellResult = manager.openShell()
                 if (shellResult.isSuccess) {
-                    val channel = shellResult.getOrNull()
+                    val shellChannel = shellResult.getOrNull()
+                    
                     withContext(Dispatchers.Main) {
-                        shellChannel = channel
-                        isConnected = true
-                        terminalOutput += "Shell session started\n"
-                    }
-                    
-                    // If file path is provided, execute it
-                    if (filePath != null && fileName != null) {
-                        withContext(Dispatchers.Main) {
-                            terminalOutput += "Uploading and executing $fileName...\n"
-                        }
-                        
-                        // Upload file
-                        val remotePath = "${server.workingDirectory}/$fileName"
-                        val uploadResult = manager.uploadFile(filePath, remotePath)
-                        
-                        if (uploadResult.isSuccess) {
-                            withContext(Dispatchers.Main) {
-                                terminalOutput += "File uploaded to $remotePath\n"
-                            }
+                        if (shellChannel != null) {
+                            // Create SSH terminal session
+                            val session = SSHTerminalSession(
+                                shellChannel.channel,
+                                2000,
+                                terminalSessionClient
+                            )
+                            sshTerminalSession = session
+                            isConnected = true
+                            statusText = "Shell session started"
                             
-                            // Execute based on file extension
-                            try {
-                                val command = getExecutionCommand(fileName, remotePath)
-                                channel?.outputStream?.write("$command\n".toByteArray())
-                                channel?.outputStream?.flush()
-                            } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    terminalOutput += "Error executing file: ${e.message}\n"
-                                }
-                            }
-                        } else {
-                            withContext(Dispatchers.Main) {
-                                terminalOutput += "Error uploading file: ${uploadResult.exceptionOrNull()?.message}\n"
-                            }
-                        }
-                    }
-
-                    
-                    // Start reading output using blocking I/O
-                    DefaultScope.launch(Dispatchers.IO) {
-                        try {
-                            channel?.let { ch ->
-                                val inputStream = ch.inputStream
-                                val buffer = ByteArray(4096)
-                                
-                                while (ch.isOpen() && isConnected) {
-                                    try {
-                                        // Blocking read - more efficient and reliable
-                                        val count = inputStream.read(buffer)
-                                        if (count > 0) {
-                                            val output = String(buffer, 0, count)
-                                            withContext(Dispatchers.Main) {
-                                                terminalOutput += output
-                                            }
-                                        } else if (count == -1) {
-                                            // End of stream
-                                            break
+                            // If file path is provided, execute it after a short delay
+                            if (filePath != null && fileName != null) {
+                                DefaultScope.launch(Dispatchers.IO) {
+                                    // Wait for shell to initialize
+                                    kotlinx.coroutines.delay(500)
+                                    
+                                    withContext(Dispatchers.Main) {
+                                        statusText = "Uploading and executing $fileName..."
+                                    }
+                                    
+                                    // Upload file
+                                    val remotePath = "${server.workingDirectory}/$fileName"
+                                    val uploadResult = manager.uploadFile(filePath, remotePath)
+                                    
+                                    if (uploadResult.isSuccess) {
+                                        withContext(Dispatchers.Main) {
+                                            statusText = "File uploaded to $remotePath"
                                         }
-                                    } catch (e: Exception) {
-                                        if (!ch.isOpen() || !isConnected) {
-                                            break
+                                        
+                                        // Execute based on file extension
+                                        val command = getExecutionCommand(fileName, remotePath)
+                                        session.write("$command\n".toByteArray())
+                                    } else {
+                                        withContext(Dispatchers.Main) {
+                                            statusText = "Error uploading file: ${uploadResult.exceptionOrNull()?.message}"
                                         }
                                     }
                                 }
-                            }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                terminalOutput += "\nConnection error: ${e.message}\n"
-                                isConnected = false
                             }
                         }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        terminalOutput += "Failed to open shell: ${shellResult.exceptionOrNull()?.message}\n"
+                        statusText = "Failed to open shell: ${shellResult.exceptionOrNull()?.message}"
                     }
                 }
             } else {
                 withContext(Dispatchers.Main) {
-                    terminalOutput += "Connection failed: ${connectResult.exceptionOrNull()?.message}\n"
+                    statusText = "Connection failed: ${connectResult.exceptionOrNull()?.message}"
                 }
             }
         }
     }
     
+    // Cleanup on dispose
     DisposableEffect(Unit) {
         onDispose {
-            shellChannel?.close()
+            sshTerminalSession?.finishIfRunning()
             connectionManager?.disconnect()
         }
     }
@@ -237,10 +305,10 @@ fun TerminalScreen(
                     if (isConnected) {
                         IconButton(
                             onClick = {
-                                shellChannel?.close()
+                                sshTerminalSession?.finishIfRunning()
                                 connectionManager?.disconnect()
                                 isConnected = false
-                                terminalOutput += "\nDisconnected\n"
+                                statusText = "Disconnected"
                             }
                         ) {
                             Icon(Icons.Default.Close, contentDescription = "Disconnect")
@@ -254,73 +322,68 @@ fun TerminalScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color.Black)
         ) {
-            // Terminal output
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(8.dp)
-            ) {
-                val horizontalScroll = rememberScrollState()
-                val verticalScroll = rememberScrollState()
-                
-                LaunchedEffect(terminalOutput) {
-                    verticalScroll.animateScrollTo(verticalScroll.maxValue)
-                }
-                
-                Text(
-                    text = terminalOutput,
-                    color = Color.Green,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(verticalScroll)
-                        .horizontalScroll(horizontalScroll)
-                )
-            }
-            
-            // Input field
-            if (isConnected) {
+            // Status bar
+            if (!isConnected || statusText.isNotEmpty()) {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(8.dp)
-                    ) {
-                        Text(
-                            text = "$ ",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 14.sp
-                        )
-                        
-                        BasicTextField(
-                            value = inputText,
-                            onValueChange = { inputText = it },
-                            textStyle = TextStyle(
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 14.sp
-                            ),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                            keyboardActions = KeyboardActions(
-                                onSend = { handleCommandInput() }
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                        
-                        Button(
-                            onClick = { handleCommandInput() },
-                            modifier = Modifier.padding(start = 8.dp)
-                        ) {
-                            Text("Send")
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+            }
+            
+            // Terminal view
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        TerminalView(ctx, null).apply {
+                            setTerminalViewClient(terminalViewClient)
+                            setTextSize(14)
+                            setTypeface(Typeface.MONOSPACE)
+                            isFocusable = true
+                            isFocusableInTouchMode = true
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            terminalView = this
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    update = { view ->
+                        // Attach the SSH terminal session when it's ready
+                        sshTerminalSession?.let { session ->
+                            if (session.emulator == null) {
+                                // Initialize emulator with default size, will be updated in onSizeChanged
+                                val width = view.width
+                                val height = view.height
+                                if (width > 0 && height > 0) {
+                                    // Calculate approximate rows and columns
+                                    val cellWidth = 12 // Approximate cell width in pixels
+                                    val cellHeight = 24 // Approximate cell height in pixels
+                                    val columns = maxOf(4, width / cellWidth)
+                                    val rows = maxOf(4, height / cellHeight)
+                                    session.initializeEmulator(columns, rows, cellWidth, cellHeight)
+                                }
+                            }
+                            
+                            // Set the emulator on the view
+                            session.emulator?.let { emulator ->
+                                view.mEmulator = emulator
+                                view.invalidate()
+                            }
                         }
                     }
-                }
+                )
             }
         }
     }
