@@ -91,17 +91,22 @@ fun TerminalScreen(
     var connectionManager by remember { mutableStateOf<SSHConnectionManager?>(null) }
     var shellChannel by remember { mutableStateOf<ShellChannel?>(null) }
     
-    // Helper function to send commands to SSH channel
-    val sendCommand: (String) -> Unit = { command ->
-        DefaultScope.launch(Dispatchers.IO) {
-            try {
-                shellChannel?.outputStream?.write("$command\n".toByteArray())
-                shellChannel?.outputStream?.flush()
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    terminalOutput += "\nError sending command: ${e.message}\n"
+    // Helper function to handle command input
+    val handleCommandInput: () -> Unit = {
+        if (inputText.isNotBlank()) {
+            val cmd = inputText
+            DefaultScope.launch(Dispatchers.IO) {
+                try {
+                    shellChannel?.outputStream?.write("$cmd\n".toByteArray())
+                    shellChannel?.outputStream?.flush()
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        terminalOutput += "\nError sending command: ${e.message}\n"
+                    }
                 }
             }
+            terminalOutput += "$ $cmd\n"
+            inputText = ""
         }
     }
     
@@ -145,9 +150,15 @@ fun TerminalScreen(
                             }
                             
                             // Execute based on file extension
-                            val command = getExecutionCommand(fileName, remotePath)
-                            channel?.outputStream?.write("$command\n".toByteArray())
-                            channel?.outputStream?.flush()
+                            try {
+                                val command = getExecutionCommand(fileName, remotePath)
+                                channel?.outputStream?.write("$command\n".toByteArray())
+                                channel?.outputStream?.flush()
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    terminalOutput += "Error executing file: ${e.message}\n"
+                                }
+                            }
                         } else {
                             withContext(Dispatchers.Main) {
                                 terminalOutput += "Error uploading file: ${uploadResult.exceptionOrNull()?.message}\n"
@@ -297,27 +308,13 @@ fun TerminalScreen(
                             ),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                             keyboardActions = KeyboardActions(
-                                onSend = {
-                                    if (inputText.isNotBlank()) {
-                                        val cmd = inputText
-                                        sendCommand(cmd)
-                                        terminalOutput += "$ $cmd\n"
-                                        inputText = ""
-                                    }
-                                }
+                                onSend = { handleCommandInput() }
                             ),
                             modifier = Modifier.weight(1f)
                         )
                         
                         Button(
-                            onClick = {
-                                if (inputText.isNotBlank()) {
-                                    val cmd = inputText
-                                    sendCommand(cmd)
-                                    terminalOutput += "$ $cmd\n"
-                                    inputText = ""
-                                }
-                            },
+                            onClick = { handleCommandInput() },
                             modifier = Modifier.padding(start = 8.dp)
                         ) {
                             Text("Send")
