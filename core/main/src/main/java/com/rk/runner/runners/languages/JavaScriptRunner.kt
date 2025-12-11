@@ -3,6 +3,7 @@ package com.rk.runner.runners.languages
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Drawable
+import com.eclipsesource.v8.JavaCallback
 import com.eclipsesource.v8.V8
 import com.eclipsesource.v8.V8Array
 import com.eclipsesource.v8.V8Object
@@ -76,17 +77,20 @@ class JavaScriptRunner : LanguageRunner() {
     private fun setupConsole(runtime: V8, outputBuffer: StringBuilder): V8Object {
         val console = V8Object(runtime)
         
-        // Helper to create console methods
+        // Helper to create console methods using JavaCallback interface
         fun addConsoleMethod(methodName: String, prefix: String = "") {
-            console.registerJavaMethod({ _, parameters ->
-                val messages = mutableListOf<String>()
-                for (i in 0 until parameters.length()) {
-                    messages.add(parameters.get(i).toString())
+            console.registerJavaMethod(object : JavaCallback {
+                override fun invoke(receiver: V8Object, parameters: V8Array): Any? {
+                    val messages = mutableListOf<String>()
+                    for (i in 0 until parameters.length()) {
+                        messages.add(parameters.get(i).toString())
+                    }
+                    if (prefix.isNotEmpty()) {
+                        outputBuffer.append(prefix).append(" ")
+                    }
+                    outputBuffer.append(messages.joinToString(" ")).append("\n")
+                    return null
                 }
-                if (prefix.isNotEmpty()) {
-                    outputBuffer.append(prefix).append(" ")
-                }
-                outputBuffer.append(messages.joinToString(" ")).append("\n")
             }, methodName)
         }
         
