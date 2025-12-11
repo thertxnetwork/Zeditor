@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.rk.components.compose.preferences.base.PreferenceLayout
+import com.rk.components.compose.preferences.base.PreferenceLayoutLazyColumn
 import com.rk.DefaultScope
 import com.rk.runner.ssh.SSHServerConfig
 import com.rk.runner.ssh.SSHServerManager
@@ -25,7 +26,7 @@ fun SSHServersScreen() {
     var serverToDelete by remember { mutableStateOf<SSHServerConfig?>(null) }
     val servers = SSHServerManager.servers
     
-    PreferenceLayout(
+    PreferenceLayoutLazyColumn(
         label = "SSH Servers",
         backArrowVisible = true
     ) {
