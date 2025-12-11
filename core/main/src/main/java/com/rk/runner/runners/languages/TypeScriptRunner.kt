@@ -100,12 +100,12 @@ class TypeScriptRunner : LanguageRunner() {
                         // Get the value type and convert appropriately
                         val stringValue = try {
                             when (parameters.getType(i)) {
-                                com.eclipsesource.v8.V8Value.STRING -> parameters.getString(i)
-                                com.eclipsesource.v8.V8Value.INTEGER -> parameters.getInteger(i).toString()
-                                com.eclipsesource.v8.V8Value.DOUBLE -> parameters.getDouble(i).toString()
-                                com.eclipsesource.v8.V8Value.BOOLEAN -> parameters.getBoolean(i).toString()
-                                com.eclipsesource.v8.V8Value.NULL -> "null"
-                                com.eclipsesource.v8.V8Value.UNDEFINED -> "undefined"
+                                V8Value.STRING -> parameters.getString(i)
+                                V8Value.INTEGER -> parameters.getInteger(i).toString()
+                                V8Value.DOUBLE -> parameters.getDouble(i).toString()
+                                V8Value.BOOLEAN -> parameters.getBoolean(i).toString()
+                                V8Value.NULL -> "null"
+                                V8Value.UNDEFINED -> "undefined"
                                 else -> parameters.get(i).toString()
                             }
                         } catch (e: Exception) {
