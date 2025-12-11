@@ -23,19 +23,25 @@ Or for debug builds:
 - Syntax highlighting for multiple programming languages
 - Extensive customization options
 - Streamlined interface for efficient editing
+- **SSH Code Runner** - Execute code on remote VPS servers:
+  - Configure multiple servers with password or SSH key authentication
+  - Support for Ubuntu, CentOS, Fedora, Arch, Alpine, openSUSE
+  - Interactive terminal with real-time output
+  - Automatic file upload and execution
+  - Works with Python, Node.js, Go, Rust, C/C++, Java, and more
+  - [See SSH Code Runner documentation](docs/SSH_CODE_RUNNER.md)
 - **Built-in Language Runners** - Run code directly without external tools:
-  - **JavaScript** (Rhino) - Full ES5-ES6 support, runs directly on JVM
+  - **JavaScript** (V8) - Full ES6+ support via Google V8 engine
   - **TypeScript** - Basic transpilation to JavaScript
   - **Lua** (LuaJ) - Full Lua 5.2 support on JVM
-  - **Java** (BeanShell) - Run Java snippets without compilation
   - **Groovy** - Full Groovy scripting support
   - **HTML/SVG** - Local web server preview
   - **Markdown** - Built-in preview
 - **Language Support Info** - Guidance for running other languages:
-  - Python (via Chaquopy, p4a, or Termux)
-  - C/C++ (via NDK or Termux)
-  - Go (via gomobile or Termux)
-  - Rust (via cargo-ndk or Termux)
+  - Python (via SSH VPS or Termux)
+  - C/C++ (via SSH VPS, NDK or Termux)
+  - Go (via SSH VPS or Termux)
+  - Rust (via SSH VPS or Termux)
   - PHP, Ruby, Kotlin, Perl, R, and more
 - LSP (Language Server Protocol) support
 
@@ -43,17 +49,18 @@ Or for debug builds:
 
 | Language | Runner | Type | Notes |
 |----------|--------|------|-------|
-| JavaScript | Rhino | JVM | Full ES5-ES6, console.log support |
-| TypeScript | Rhino | JVM | Basic transpilation, runs as JS |
+| **Any Language** | **SSH VPS** | **Remote** | **Run on your VPS server via SSH** |
+| JavaScript | V8 | JVM/Native | Full ES6+, Google V8 engine |
+| TypeScript | V8 | JVM/Native | Basic transpilation, runs as JS |
 | Lua | LuaJ | JVM | Full Lua 5.2, standard library |
-| Java | BeanShell | JVM | Script-style Java execution |
 | Groovy | GroovyShell | JVM | Full Groovy with closures/DSL |
 | HTML/SVG | HttpServer | Web | Local server at port 8357 |
 | Markdown | WebView | Web | Built-in preview |
-| Python | Info | - | Setup instructions provided |
-| C/C++ | Info | - | NDK/Termux instructions |
-| Go | Info | - | gomobile/Termux instructions |
-| Rust | Info | - | cargo-ndk/Termux instructions |
+| Python | SSH/Info | Remote | Via SSH VPS or Termux |
+| C/C++ | SSH/Info | Remote | Via SSH VPS, NDK or Termux |
+| Go | SSH/Info | Remote | Via SSH VPS or Termux |
+| Rust | SSH/Info | Remote | Via SSH VPS or Termux |
+| PHP/Ruby/Perl | SSH/Info | Remote | Via SSH VPS or Termux |
 
 ## Credits
 
