@@ -91,84 +91,115 @@ fun TerminalScreen(
     var connectionManager by remember { mutableStateOf<SSHConnectionManager?>(null) }
     var shellChannel by remember { mutableStateOf<ShellChannel?>(null) }
     
+    // Helper function to send commands to SSH channel
+    val sendCommand: (String) -> Unit = { command ->
+        DefaultScope.launch(Dispatchers.IO) {
+            try {
+                shellChannel?.outputStream?.write("$command\n".toByteArray())
+                shellChannel?.outputStream?.flush()
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    terminalOutput += "\nError sending command: ${e.message}\n"
+                }
+            }
+        }
+    }
+    
     // Connect on start
     LaunchedEffect(Unit) {
-        val manager = SSHConnectionManager(server)
-        connectionManager = manager
-        
-        val connectResult = manager.connect()
-        if (connectResult.isSuccess) {
-            terminalOutput += "Connected to ${server.getDisplayInfo()}\n"
+        withContext(Dispatchers.IO) {
+            val manager = SSHConnectionManager(server)
+            withContext(Dispatchers.Main) {
+                connectionManager = manager
+            }
             
-            // Open shell
-            val shellResult = manager.openShell()
-            if (shellResult.isSuccess) {
-                val channel = shellResult.getOrNull()
-                shellChannel = channel
-                isConnected = true
-                terminalOutput += "Shell session started\n"
-                
-                // If file path is provided, execute it
-                if (filePath != null && fileName != null) {
-                    terminalOutput += "Uploading and executing $fileName...\n"
-                    
-                    // Upload file
-                    val remotePath = "${server.workingDirectory}/$fileName"
-                    val uploadResult = manager.uploadFile(filePath, remotePath)
-                    
-                    if (uploadResult.isSuccess) {
-                        terminalOutput += "File uploaded to $remotePath\n"
-                        
-                        // Execute based on file extension
-                        val command = getExecutionCommand(fileName, remotePath)
-                        withContext(Dispatchers.IO) {
-                            channel?.outputStream?.write("$command\n".toByteArray())
-                            channel?.outputStream?.flush()
-                        }
-                    } else {
-                        terminalOutput += "Error uploading file: ${uploadResult.exceptionOrNull()?.message}\n"
-                    }
+            val connectResult = manager.connect()
+            if (connectResult.isSuccess) {
+                withContext(Dispatchers.Main) {
+                    terminalOutput += "Connected to ${server.getDisplayInfo()}\n"
                 }
                 
-                // Start reading output using blocking I/O
-                DefaultScope.launch(Dispatchers.IO) {
-                    try {
-                        channel?.let { ch ->
-                            val inputStream = ch.inputStream
-                            val buffer = ByteArray(4096)
+                // Open shell
+                val shellResult = manager.openShell()
+                if (shellResult.isSuccess) {
+                    val channel = shellResult.getOrNull()
+                    withContext(Dispatchers.Main) {
+                        shellChannel = channel
+                        isConnected = true
+                        terminalOutput += "Shell session started\n"
+                    }
+                    
+                    // If file path is provided, execute it
+                    if (filePath != null && fileName != null) {
+                        withContext(Dispatchers.Main) {
+                            terminalOutput += "Uploading and executing $fileName...\n"
+                        }
+                        
+                        // Upload file
+                        val remotePath = "${server.workingDirectory}/$fileName"
+                        val uploadResult = manager.uploadFile(filePath, remotePath)
+                        
+                        if (uploadResult.isSuccess) {
+                            withContext(Dispatchers.Main) {
+                                terminalOutput += "File uploaded to $remotePath\n"
+                            }
                             
-                            while (ch.isOpen() && isConnected) {
-                                try {
-                                    // Blocking read - more efficient and reliable
-                                    val count = inputStream.read(buffer)
-                                    if (count > 0) {
-                                        val output = String(buffer, 0, count)
-                                        withContext(Dispatchers.Main) {
-                                            terminalOutput += output
+                            // Execute based on file extension
+                            val command = getExecutionCommand(fileName, remotePath)
+                            channel?.outputStream?.write("$command\n".toByteArray())
+                            channel?.outputStream?.flush()
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                terminalOutput += "Error uploading file: ${uploadResult.exceptionOrNull()?.message}\n"
+                            }
+                        }
+                    }
+
+                    
+                    // Start reading output using blocking I/O
+                    DefaultScope.launch(Dispatchers.IO) {
+                        try {
+                            channel?.let { ch ->
+                                val inputStream = ch.inputStream
+                                val buffer = ByteArray(4096)
+                                
+                                while (ch.isOpen() && isConnected) {
+                                    try {
+                                        // Blocking read - more efficient and reliable
+                                        val count = inputStream.read(buffer)
+                                        if (count > 0) {
+                                            val output = String(buffer, 0, count)
+                                            withContext(Dispatchers.Main) {
+                                                terminalOutput += output
+                                            }
+                                        } else if (count == -1) {
+                                            // End of stream
+                                            break
                                         }
-                                    } else if (count == -1) {
-                                        // End of stream
-                                        break
-                                    }
-                                } catch (e: Exception) {
-                                    if (!ch.isOpen() || !isConnected) {
-                                        break
+                                    } catch (e: Exception) {
+                                        if (!ch.isOpen() || !isConnected) {
+                                            break
+                                        }
                                     }
                                 }
                             }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                terminalOutput += "\nConnection error: ${e.message}\n"
+                                isConnected = false
+                            }
                         }
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            terminalOutput += "\nConnection error: ${e.message}\n"
-                            isConnected = false
-                        }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        terminalOutput += "Failed to open shell: ${shellResult.exceptionOrNull()?.message}\n"
                     }
                 }
             } else {
-                terminalOutput += "Failed to open shell: ${shellResult.exceptionOrNull()?.message}\n"
+                withContext(Dispatchers.Main) {
+                    terminalOutput += "Connection failed: ${connectResult.exceptionOrNull()?.message}\n"
+                }
             }
-        } else {
-            terminalOutput += "Connection failed: ${connectResult.exceptionOrNull()?.message}\n"
         }
     }
     
@@ -268,17 +299,9 @@ fun TerminalScreen(
                             keyboardActions = KeyboardActions(
                                 onSend = {
                                     if (inputText.isNotBlank()) {
-                                        DefaultScope.launch(Dispatchers.IO) {
-                                            try {
-                                                shellChannel?.outputStream?.write("$inputText\n".toByteArray())
-                                                shellChannel?.outputStream?.flush()
-                                            } catch (e: Exception) {
-                                                withContext(Dispatchers.Main) {
-                                                    terminalOutput += "\nError sending command: ${e.message}\n"
-                                                }
-                                            }
-                                        }
-                                        terminalOutput += "$ $inputText\n"
+                                        val cmd = inputText
+                                        sendCommand(cmd)
+                                        terminalOutput += "$ $cmd\n"
                                         inputText = ""
                                     }
                                 }
@@ -289,17 +312,9 @@ fun TerminalScreen(
                         Button(
                             onClick = {
                                 if (inputText.isNotBlank()) {
-                                    DefaultScope.launch(Dispatchers.IO) {
-                                        try {
-                                            shellChannel?.outputStream?.write("$inputText\n".toByteArray())
-                                            shellChannel?.outputStream?.flush()
-                                        } catch (e: Exception) {
-                                            withContext(Dispatchers.Main) {
-                                                terminalOutput += "\nError sending command: ${e.message}\n"
-                                            }
-                                        }
-                                    }
-                                    terminalOutput += "$ $inputText\n"
+                                    val cmd = inputText
+                                    sendCommand(cmd)
+                                    terminalOutput += "$ $cmd\n"
                                     inputText = ""
                                 }
                             },
