@@ -114,15 +114,15 @@ class TypeScriptRunner : LanguageRunner() {
         return withContext(Dispatchers.IO) {
             val startTime = System.currentTimeMillis()
             val outputBuffer = StringBuilder()
+            var console: V8Object? = null
             
             try {
                 v8Runtime = V8.createV8Runtime()
                 
                 v8Runtime?.let { runtime ->
                     // Setup console object with methods
-                    val console = setupConsole(runtime, outputBuffer)
+                    console = setupConsole(runtime, outputBuffer)
                     runtime.add("console", console)
-                    console.release()
                     
                     // Execute the code
                     val result = runtime.executeScript(code)
@@ -161,6 +161,7 @@ class TypeScriptRunner : LanguageRunner() {
                 )
             } finally {
                 try {
+                    console?.release()
                     v8Runtime?.release()
                 } catch (_: Exception) {}
                 v8Runtime = null
