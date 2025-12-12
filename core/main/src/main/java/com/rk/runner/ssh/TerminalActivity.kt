@@ -43,6 +43,7 @@ import com.termux.terminal.KeyHandler
 import com.termux.terminal.TerminalBuffer
 import com.termux.terminal.TerminalEmulator
 import com.termux.terminal.TerminalOutput
+import com.termux.terminal.TerminalRow
 import com.termux.terminal.TerminalSessionClient
 import com.termux.terminal.TextStyle
 import kotlinx.coroutines.Dispatchers
@@ -560,12 +561,35 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
             val y = row * fontHeight + fontAscent
             val screenRow = topRow + row
             
-            for (col in 0 until columns) {
+            // Get the terminal row
+            val internalRow = screen.externalToInternalRow(screenRow)
+            val lineObject = try {
+                screen.allocateFullLineIfNecessary(internalRow)
+            } catch (e: Exception) {
+                continue
+            }
+            
+            val line = lineObject.mText
+            val charsUsed = lineObject.spaceUsed
+            
+            var currentCharIndex = 0
+            var col = 0
+            
+            while (col < columns && currentCharIndex < charsUsed) {
                 val x = col * fontWidth
                 
-                // Get character and style
-                val char = screen.getCharAt(screenRow, col)
-                val style = screen.getStyleAt(screenRow, col)
+                // Get character
+                val charAtIndex = line[currentCharIndex]
+                val isHighSurrogate = Character.isHighSurrogate(charAtIndex)
+                val codePoint = if (isHighSurrogate && currentCharIndex + 1 < charsUsed) {
+                    Character.toCodePoint(charAtIndex, line[currentCharIndex + 1])
+                } else {
+                    charAtIndex.code
+                }
+                val charsForCodePoint = if (isHighSurrogate) 2 else 1
+                
+                // Get style
+                val style = lineObject.getStyle(col)
                 
                 // Decode colors
                 val fg = TextStyle.decodeForeColor(style)
@@ -581,7 +605,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
                 }
                 
                 // Draw character
-                if (char.code > 32) {
+                if (codePoint > 32) {
                     val fgColor = getColor(fg, true)
                     paint.color = fgColor
                     
@@ -590,8 +614,12 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
                     paint.isUnderlineText = (effect and TextStyle.CHARACTER_ATTRIBUTE_UNDERLINE) != 0
                     paint.textSkewX = if ((effect and TextStyle.CHARACTER_ATTRIBUTE_ITALIC) != 0) -0.25f else 0f
                     
-                    canvas.drawText(char.toString(), x, y, paint)
+                    val charStr = String(Character.toChars(codePoint))
+                    canvas.drawText(charStr, x, y, paint)
                 }
+                
+                currentCharIndex += charsForCodePoint
+                col++
             }
         }
         
@@ -806,7 +834,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
     
     override fun setTerminalShellPid(session: com.termux.terminal.TerminalSession?, pid: Int) {}
     
-    override fun getTerminalCursorStyle(): Int = 0
+    override fun getTerminalCursorStyle(): Int? = 0
     
     override fun logError(tag: String?, message: String?) {}
     override fun logWarn(tag: String?, message: String?) {}
