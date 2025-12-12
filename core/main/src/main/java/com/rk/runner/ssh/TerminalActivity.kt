@@ -28,6 +28,7 @@ import android.widget.LinearLayout
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import kotlin.math.hypot
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
@@ -775,7 +776,10 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         
         copyPastePopup = PopupWindow(popupLayout, LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, true).apply {
             elevation = 10f
-            showAsDropDown(this@SSHTerminalView, x.toInt(), y.toInt() - 100)
+            // Use showAtLocation with the view's root for proper positioning
+            val location = IntArray(2)
+            this@SSHTerminalView.getLocationOnScreen(location)
+            showAtLocation(this@SSHTerminalView, Gravity.NO_GRAVITY, location[0] + x.toInt(), location[1] + y.toInt() - 120)
         }
     }
     
@@ -1161,7 +1165,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
                     if (startDisplayRow >= 0 && startDisplayRow < rows) {
                         val startHandleX = selStartCol * fontWidth
                         val startHandleY = (startDisplayRow + 1) * fontHeight
-                        if (kotlin.math.hypot((touchX - startHandleX).toDouble(), (touchY - startHandleY).toDouble()) < handleRadius) {
+                        if (hypot((touchX - startHandleX).toDouble(), (touchY - startHandleY).toDouble()) < handleRadius) {
                             draggingStartHandle = true
                             return true
                         }
@@ -1172,7 +1176,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
                     if (endDisplayRow >= 0 && endDisplayRow < rows) {
                         val endHandleX = (selEndCol + 1) * fontWidth
                         val endHandleY = (endDisplayRow + 1) * fontHeight
-                        if (kotlin.math.hypot((touchX - endHandleX).toDouble(), (touchY - endHandleY).toDouble()) < handleRadius) {
+                        if (hypot((touchX - endHandleX).toDouble(), (touchY - endHandleY).toDouble()) < handleRadius) {
                             draggingEndHandle = true
                             return true
                         }
