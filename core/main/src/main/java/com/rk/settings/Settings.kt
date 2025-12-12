@@ -55,12 +55,19 @@ object Settings {
     var themeFlipper by CachedPreference("theme_flipper", false)
     var show_nav_extra_keys by CachedPreference("show_nav_extra_keys", true)
     var format_on_save by CachedPreference("format_on_save", false)
+    
+    // Terminal settings (boolean)
+    var terminal_bell by CachedPreference("terminal_bell", false)
+    var terminal_vibrate by CachedPreference("terminal_vibrate", true)
+    var terminal_show_extra_keys by CachedPreference("terminal_show_extra_keys", true)
+    var terminal_show_arrow_keys by CachedPreference("terminal_show_arrow_keys", true)
 
     // Int settings
     var tab_size by CachedPreference("tabsize", 4)
     var editor_text_size by CachedPreference("textsize", 14)
     var default_night_mode by CachedPreference("default_night_mode", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
     var terminal_font_size by CachedPreference("terminal_font_size", 13)
+    var terminal_scrollback_lines by CachedPreference("terminal_scrollback_lines", 2000)
     var visits by CachedPreference("visits", 0)
 
     // String settings
@@ -72,6 +79,8 @@ object Settings {
     var currentLang: String? by
         CachedPreference("currentLang", application!!.resources.configuration.locales[0].language)
     var extra_keys by CachedPreference("extra_keys", "()\"{}[];")
+    var terminal_theme by CachedPreference("terminal_theme", "default")
+    var terminal_font by CachedPreference("terminal_font", "default")
 
     // Long settings
     var last_update_check_timestamp by CachedPreference("last_update", 0L)

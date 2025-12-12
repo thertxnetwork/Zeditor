@@ -19,6 +19,7 @@ import com.rk.settings.mutators.ManageMutators
 import com.rk.settings.support.Support
 import com.rk.settings.theme.ThemeScreen
 import com.rk.settings.ssh.SSHServersScreen
+import com.rk.settings.ssh.TerminalSettingsScreen
 
 @Composable
 fun SettingsNavHost(navController: NavHostController, activity: SettingsActivity) {
@@ -44,5 +45,6 @@ fun SettingsNavHost(navController: NavHostController, activity: SettingsActivity
         composable(SettingsRoutes.LspSettings.route) { LspSettings() }
         composable(SettingsRoutes.Themes.route) { ThemeScreen() }
         composable(SettingsRoutes.SSHServers.route) { SSHServersScreen() }
+        composable(SettingsRoutes.TerminalSettings.route) { TerminalSettingsScreen() }
     }
 }

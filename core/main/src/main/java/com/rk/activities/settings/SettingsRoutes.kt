@@ -30,4 +30,6 @@ sealed class SettingsRoutes(val route: String) {
     data object LspSettings : SettingsRoutes("lsp_settings")
     
     data object SSHServers : SettingsRoutes("ssh_servers")
+    
+    data object TerminalSettings : SettingsRoutes("terminal_settings")
 }

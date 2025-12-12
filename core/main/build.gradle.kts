@@ -128,6 +128,9 @@ dependencies {
     
     // SSH support for VPS code runner
     implementation(libs.jsch)
+    
+    // Termux terminal classes are now included directly in the codebase
+    // (copied from termux-app terminal-emulator module)
 }
 
 abstract class GenerateSupportedLocales : DefaultTask() {
