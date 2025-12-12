@@ -78,6 +78,13 @@ private fun Categories(navController: NavController) {
         iconResource = drawables.bash,
         onNavigate = { navController.navigate(SettingsRoutes.SSHServers.route) },
     )
+    
+    PreferenceCategory(
+        label = "Terminal",
+        description = "Terminal themes, fonts, and behavior",
+        iconResource = drawables.bash,
+        onNavigate = { navController.navigate(SettingsRoutes.TerminalSettings.route) },
+    )
 
     if (InbuiltFeatures.debugMode.state.value) {
         PreferenceCategory(

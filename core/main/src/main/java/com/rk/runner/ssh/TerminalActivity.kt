@@ -33,9 +33,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +60,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.InputStream
 import java.io.OutputStream
+import com.rk.settings.Settings
+import com.rk.settings.ssh.TerminalThemes
 
 class TerminalActivity : ComponentActivity() {
     
@@ -255,20 +255,20 @@ fun TerminalScreen(
                 },
                 actions = {
                     // Copy button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             terminalView?.copySelectionToClipboard()
                         }
                     ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
+                        Text("Copy", color = MaterialTheme.colorScheme.onSurface)
                     }
                     // Paste button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             terminalView?.pasteFromClipboard()
                         }
                     ) {
-                        Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
+                        Text("Paste", color = MaterialTheme.colorScheme.onSurface)
                     }
                     if (isConnected) {
                         IconButton(
@@ -279,7 +279,7 @@ fun TerminalScreen(
                                 statusText = "Disconnected"
                             }
                         ) {
-                            Icon(Icons.Default.Close, contentDescription = "Disconnect")
+                            Icon(Icons.Outlined.Close, contentDescription = "Disconnect")
                         }
                     }
                 }
@@ -542,31 +542,26 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
     
     private var writeCallback: ((ByteArray) -> Unit)? = null
     
-    // Terminal colors (standard 16-color palette)
-    private val terminalColors = intArrayOf(
-        Color.BLACK,           // 0: Black
-        Color.parseColor("#CC0000"),  // 1: Red
-        Color.parseColor("#00CC00"),  // 2: Green
-        Color.parseColor("#CCCC00"),  // 3: Yellow
-        Color.parseColor("#0000CC"),  // 4: Blue
-        Color.parseColor("#CC00CC"),  // 5: Magenta
-        Color.parseColor("#00CCCC"),  // 6: Cyan
-        Color.parseColor("#CCCCCC"),  // 7: White
-        Color.parseColor("#666666"),  // 8: Bright Black
-        Color.parseColor("#FF0000"),  // 9: Bright Red
-        Color.parseColor("#00FF00"),  // 10: Bright Green
-        Color.parseColor("#FFFF00"),  // 11: Bright Yellow
-        Color.parseColor("#0000FF"),  // 12: Bright Blue
-        Color.parseColor("#FF00FF"),  // 13: Bright Magenta
-        Color.parseColor("#00FFFF"),  // 14: Bright Cyan
-        Color.WHITE            // 15: Bright White
-    )
+    // Current terminal theme
+    private var currentTheme = TerminalThemes.getThemeById(Settings.terminal_theme)
+    
+    // Terminal colors (loaded from theme)
+    private var terminalColors = currentTheme.getColorPalette()
+    
+    // Default colors from theme
+    private var defaultForeground = currentTheme.foregroundColor
+    private var defaultBackground = currentTheme.backgroundColor
+    private var cursorColor = currentTheme.cursorColor
     
     private val mainHandler = Handler(Looper.getMainLooper())
     
     init {
         isFocusable = true
         isFocusableInTouchMode = true
+        
+        // Apply theme colors to paints
+        backgroundPaint.color = defaultBackground
+        
         updateFontMetrics()
         
         // Gesture detector for scrolling, taps, and selection
@@ -772,6 +767,22 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         }
     }
     
+    // Set terminal theme
+    fun setTheme(theme: com.rk.settings.ssh.TerminalTheme) {
+        currentTheme = theme
+        terminalColors = theme.getColorPalette()
+        defaultForeground = theme.foregroundColor
+        defaultBackground = theme.backgroundColor
+        cursorColor = theme.cursorColor
+        backgroundPaint.color = defaultBackground
+        invalidate()
+    }
+    
+    // Reload theme from settings
+    fun reloadThemeFromSettings() {
+        setTheme(TerminalThemes.getThemeById(Settings.terminal_theme))
+    }
+    
     fun setFontSize(size: Float) {
         fontSize = size.coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE)
         updateFontMetrics()
@@ -919,10 +930,10 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
                 
                 // Draw background if not default
                 val bgColor = getColor(bg, false)
-                if (bgColor != Color.BLACK) {
+                if (bgColor != defaultBackground) {
                     backgroundPaint.color = bgColor
                     canvas.drawRect(x, row * fontHeight, x + fontWidth, (row + 1) * fontHeight, backgroundPaint)
-                    backgroundPaint.color = Color.BLACK
+                    backgroundPaint.color = defaultBackground
                 }
                 
                 // Draw character
@@ -953,7 +964,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
                 val cursorX = cursorCol * fontWidth
                 val cursorY = cursorRow * fontHeight
                 
-                paint.color = Color.GREEN
+                paint.color = cursorColor
                 paint.alpha = 128
                 canvas.drawRect(cursorX, cursorY, cursorX + fontWidth, cursorY + fontHeight, paint)
                 paint.alpha = 255
@@ -991,16 +1002,16 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
     
     private fun getColor(colorIndex: Int, isForeground: Boolean): Int {
         return when {
-            colorIndex == TextStyle.COLOR_INDEX_FOREGROUND -> if (isForeground) Color.GREEN else Color.BLACK
-            colorIndex == TextStyle.COLOR_INDEX_BACKGROUND -> Color.BLACK
+            colorIndex == TextStyle.COLOR_INDEX_FOREGROUND -> if (isForeground) defaultForeground else defaultBackground
+            colorIndex == TextStyle.COLOR_INDEX_BACKGROUND -> defaultBackground
             colorIndex >= 0 && colorIndex < 256 -> get256Color(colorIndex)
-            else -> if (isForeground) Color.GREEN else Color.BLACK
+            else -> if (isForeground) defaultForeground else defaultBackground
         }
     }
     
     private fun get256Color(index: Int): Int {
         return when {
-            index < 16 -> terminalColors.getOrElse(index) { Color.GREEN }
+            index < 16 -> terminalColors.getOrElse(index) { defaultForeground }
             index < 232 -> {
                 val i = index - 16
                 val r = ((i / 36) % 6) * 51
