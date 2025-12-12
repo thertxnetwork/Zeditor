@@ -956,7 +956,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         // Draw terminal content with scrollback support
         // Use batch rendering for better performance and correct spacing
         val activeTranscriptRows = screen.activeTranscriptRows
-        val screenRows = screen.mScreenRows
+        val screenRows = screen.screenRows
         
         for (row in 0 until rows) {
             val y = row * fontHeight + fontAscent

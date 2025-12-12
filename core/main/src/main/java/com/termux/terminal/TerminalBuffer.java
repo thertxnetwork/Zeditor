@@ -152,6 +152,10 @@ public final class TerminalBuffer {
         return mActiveTranscriptRows + mScreenRows;
     }
 
+    public int getScreenRows() {
+        return mScreenRows;
+    }
+
     /**
      * Convert a row value from the public external coordinate system to our internal private coordinate system.
      *
