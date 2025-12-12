@@ -1,3 +1,6 @@
 [submodule "soraX"]
 	path = soraX
 	url = https://github.com/RohitKushvaha01/soraX.git
+[submodule "ReTerminal"]
+	path = ReTerminal
+	url = https://github.com/RohitKushvaha01/ReTerminal.git

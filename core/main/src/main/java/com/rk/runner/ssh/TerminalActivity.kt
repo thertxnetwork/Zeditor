@@ -57,6 +57,7 @@ import com.termux.terminal.TerminalBuffer
 import com.termux.terminal.TerminalEmulator
 import com.termux.terminal.TerminalOutput
 import com.termux.terminal.TerminalRow
+import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.terminal.TextStyle
 import kotlinx.coroutines.Dispatchers
@@ -956,7 +957,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         // Draw terminal content with scrollback support
         // Use batch rendering for better performance and correct spacing
         val activeTranscriptRows = screen.activeTranscriptRows
-        val screenRows = screen.screenRows
+        val screenRows = emu.mRows  // Use emulator's mRows since TerminalBuffer.mScreenRows is package-private
         
         for (row in 0 until rows) {
             val y = row * fontHeight + fontAscent
@@ -1363,26 +1364,26 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
     fun isShiftActive() = shiftDown
     fun isFnActive() = fnDown
     
-    // TerminalSessionClient implementation
-    override fun onTextChanged() {
+    // TerminalSessionClient implementation (not all methods used for SSH)
+    override fun onTextChanged(changedSession: TerminalSession) {
         mainHandler.post { invalidate() }
     }
     
-    override fun onTitleChanged() {}
+    override fun onTitleChanged(changedSession: TerminalSession) {}
     
-    override fun onSessionFinished() {}
+    override fun onSessionFinished(finishedSession: TerminalSession) {}
     
-    override fun onCopyTextToClipboard(text: String?) {
+    override fun onCopyTextToClipboard(session: TerminalSession, text: String?) {
         text?.let { copyToClipboard(it) }
     }
     
-    override fun onPasteTextFromClipboard() {
+    override fun onPasteTextFromClipboard(session: TerminalSession?) {
         pasteFromClipboard()
     }
     
-    override fun onBell() {}
+    override fun onBell(session: TerminalSession) {}
     
-    override fun onColorsChanged() {
+    override fun onColorsChanged(session: TerminalSession) {
         mainHandler.post { invalidate() }
     }
     
@@ -1390,7 +1391,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         mainHandler.post { invalidate() }
     }
     
-    override fun setTerminalShellPid(pid: Int) {}
+    override fun setTerminalShellPid(session: TerminalSession, pid: Int) {}
     
     override fun getTerminalCursorStyle(): Int? = 0
     
