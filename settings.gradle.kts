@@ -80,3 +80,24 @@ project(":language-textmate").projectDir = file("soraX/language-textmate")
 include(":baselineprofile")
 include(":benchmark")
 include(":benchmark2")
+
+// ReTerminal submodule - terminal emulator library
+val reTerminal = file("ReTerminal")
+
+if (!(reTerminal.exists() && reTerminal.listFiles()?.isNotEmpty() == true)) {
+    throw GradleException(
+        """
+        The 'ReTerminal' submodule is missing or empty.
+        
+        Please run:
+        
+            git submodule update --init --recursive
+        """.trimIndent()
+    )
+}
+
+include(":terminal-emulator")
+project(":terminal-emulator").projectDir = file("ReTerminal/core/terminal-emulator")
+
+include(":terminal-view")
+project(":terminal-view").projectDir = file("ReTerminal/core/terminal-view")
