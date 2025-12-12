@@ -26,15 +26,25 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import com.rk.DefaultScope
@@ -108,6 +118,11 @@ fun TerminalScreen(
     var connectionManager by remember { mutableStateOf<SSHConnectionManager?>(null) }
     var shellChannel by remember { mutableStateOf<ShellChannel?>(null) }
     var terminalView by remember { mutableStateOf<SSHTerminalView?>(null) }
+    
+    // Extra key row state
+    var ctrlActive by remember { mutableStateOf(false) }
+    var altActive by remember { mutableStateOf(false) }
+    var shiftActive by remember { mutableStateOf(false) }
     
     // Connect the shell channel to terminal view when both are available
     LaunchedEffect(shellChannel, terminalView) {
@@ -239,6 +254,22 @@ fun TerminalScreen(
                     }
                 },
                 actions = {
+                    // Copy button
+                    IconButton(
+                        onClick = {
+                            terminalView?.copySelectionToClipboard()
+                        }
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
+                    }
+                    // Paste button
+                    IconButton(
+                        onClick = {
+                            terminalView?.pasteFromClipboard()
+                        }
+                    ) {
+                        Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
+                    }
                     if (isConnected) {
                         IconButton(
                             onClick = {
@@ -259,6 +290,7 @@ fun TerminalScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding() // Handle keyboard insets
         ) {
             // Status bar
             if (statusText.isNotEmpty()) {
@@ -293,18 +325,160 @@ fun TerminalScreen(
                     }
                 )
             }
+            
+            // Extra key row
+            ExtraKeyRow(
+                terminalView = terminalView,
+                ctrlActive = ctrlActive,
+                altActive = altActive,
+                shiftActive = shiftActive,
+                onCtrlToggle = { 
+                    ctrlActive = !ctrlActive
+                    terminalView?.toggleCtrl()
+                },
+                onAltToggle = { 
+                    altActive = !altActive
+                    terminalView?.toggleAlt()
+                },
+                onShiftToggle = { 
+                    shiftActive = !shiftActive
+                    terminalView?.toggleShift()
+                }
+            )
         }
+    }
+}
+
+@Composable
+fun ExtraKeyRow(
+    terminalView: SSHTerminalView?,
+    ctrlActive: Boolean,
+    altActive: Boolean,
+    shiftActive: Boolean,
+    onCtrlToggle: () -> Unit,
+    onAltToggle: () -> Unit,
+    onShiftToggle: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+    
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .horizontalScroll(scrollState)
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // ESC key
+            ExtraKeyButton(text = "ESC") {
+                terminalView?.sendKey(byteArrayOf(0x1B))
+            }
+            
+            // Tab key
+            ExtraKeyButton(text = "TAB") {
+                terminalView?.sendKey(byteArrayOf('\t'.code.toByte()))
+            }
+            
+            // Ctrl modifier (toggle)
+            ExtraKeyButton(
+                text = "CTRL",
+                isActive = ctrlActive,
+                onClick = onCtrlToggle
+            )
+            
+            // Alt modifier (toggle)
+            ExtraKeyButton(
+                text = "ALT",
+                isActive = altActive,
+                onClick = onAltToggle
+            )
+            
+            // Shift modifier (toggle)
+            ExtraKeyButton(
+                text = "SHIFT",
+                isActive = shiftActive,
+                onClick = onShiftToggle
+            )
+            
+            // Arrow keys
+            ExtraKeyButton(text = "↑") {
+                terminalView?.sendKey("\u001B[A".toByteArray())
+            }
+            ExtraKeyButton(text = "↓") {
+                terminalView?.sendKey("\u001B[B".toByteArray())
+            }
+            ExtraKeyButton(text = "←") {
+                terminalView?.sendKey("\u001B[D".toByteArray())
+            }
+            ExtraKeyButton(text = "→") {
+                terminalView?.sendKey("\u001B[C".toByteArray())
+            }
+            
+            // Home/End
+            ExtraKeyButton(text = "HOME") {
+                terminalView?.sendKey("\u001B[H".toByteArray())
+            }
+            ExtraKeyButton(text = "END") {
+                terminalView?.sendKey("\u001B[F".toByteArray())
+            }
+            
+            // Page Up/Down
+            ExtraKeyButton(text = "PGUP") {
+                terminalView?.sendKey("\u001B[5~".toByteArray())
+            }
+            ExtraKeyButton(text = "PGDN") {
+                terminalView?.sendKey("\u001B[6~".toByteArray())
+            }
+            
+            // Common shortcuts
+            ExtraKeyButton(text = "-") {
+                terminalView?.sendKey("-".toByteArray())
+            }
+            ExtraKeyButton(text = "/") {
+                terminalView?.sendKey("/".toByteArray())
+            }
+            ExtraKeyButton(text = "|") {
+                terminalView?.sendKey("|".toByteArray())
+            }
+            ExtraKeyButton(text = "~") {
+                terminalView?.sendKey("~".toByteArray())
+            }
+        }
+    }
+}
+
+@Composable
+fun ExtraKeyButton(
+    text: String,
+    isActive: Boolean = false,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+    ) {
+        Text(
+            text = text,
+            color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+        )
     }
 }
 
 /**
  * Terminal view that uses Termux TerminalEmulator for proper ANSI processing.
- * Supports: scrollback, zoom (pinch), copy/paste, special keys (ctrl, alt, etc.)
+ * Supports: scrollback, zoom (pinch), copy/paste, text selection, special keys (ctrl, alt, etc.)
  */
 class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
     
     companion object {
-        private const val DEFAULT_FONT_SIZE = 14f
+        private const val DEFAULT_FONT_SIZE = 13f
         private const val MIN_FONT_SIZE = 8f
         private const val MAX_FONT_SIZE = 32f
     }
@@ -312,13 +486,24 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
     private var emulator: TerminalEmulator? = null
     private var terminalOutput: SSHTerminalOutput? = null
     
+    // Font configuration - use monospace font optimized for terminals
+    private var currentTypeface: Typeface = Typeface.MONOSPACE
+    
     private val paint = Paint().apply {
         isAntiAlias = true
-        typeface = Typeface.MONOSPACE
+        typeface = currentTypeface
+        isSubpixelText = true
+        letterSpacing = 0f  // No extra letter spacing
     }
     
     private val backgroundPaint = Paint().apply {
         color = Color.BLACK
+        style = Paint.Style.FILL
+    }
+    
+    // Selection paint
+    private val selectionPaint = Paint().apply {
+        color = Color.argb(80, 100, 100, 255)
         style = Paint.Style.FILL
     }
     
@@ -335,7 +520,14 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
     private val scroller = OverScroller(context)
     private var scrollRemainder = 0f
     
-    // Gesture support for scroll and zoom
+    // Text selection support
+    private var isSelecting = false
+    private var selStartCol = -1
+    private var selStartRow = -1
+    private var selEndCol = -1
+    private var selEndRow = -1
+    
+    // Gesture support for scroll, zoom, and selection
     private val gestureDetector: GestureDetector
     private val scaleDetector: ScaleGestureDetector
     
@@ -377,13 +569,23 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         isFocusableInTouchMode = true
         updateFontMetrics()
         
-        // Gesture detector for scrolling and taps
+        // Gesture detector for scrolling, taps, and selection
         gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent): Boolean = true
             
             override fun onSingleTapUp(e: MotionEvent): Boolean {
+                // Clear selection on tap
+                clearSelection()
                 requestFocus()
                 showKeyboard()
+                return true
+            }
+            
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                // Select word at tap position
+                val col = (e.x / fontWidth).toInt().coerceIn(0, columns - 1)
+                val row = (e.y / fontHeight).toInt().coerceIn(0, rows - 1)
+                selectWordAt(col, row)
                 return true
             }
             
@@ -408,8 +610,17 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
             }
             
             override fun onLongPress(e: MotionEvent) {
-                // Show context menu or paste
-                pasteFromClipboard()
+                // Start selection or paste
+                val col = (e.x / fontWidth).toInt().coerceIn(0, columns - 1)
+                val row = (e.y / fontHeight).toInt().coerceIn(0, rows - 1) + topRow
+                
+                if (hasSelection()) {
+                    // Show copy/paste options
+                    copySelectionToClipboard()
+                } else {
+                    // Start selection
+                    startSelection(col, row)
+                }
             }
         })
         
@@ -448,12 +659,117 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         invalidate()
     }
     
+    // Text selection methods
+    private fun startSelection(col: Int, row: Int) {
+        isSelecting = true
+        selStartCol = col
+        selStartRow = row
+        selEndCol = col
+        selEndRow = row
+        invalidate()
+    }
+    
+    private fun updateSelection(col: Int, row: Int) {
+        if (isSelecting) {
+            selEndCol = col
+            selEndRow = row
+            invalidate()
+        }
+    }
+    
+    private fun endSelection() {
+        isSelecting = false
+    }
+    
+    fun clearSelection() {
+        selStartCol = -1
+        selStartRow = -1
+        selEndCol = -1
+        selEndRow = -1
+        isSelecting = false
+        invalidate()
+    }
+    
+    fun hasSelection(): Boolean {
+        return selStartCol >= 0 && selStartRow >= 0 && selEndCol >= 0 && selEndRow >= 0
+    }
+    
+    private fun selectWordAt(col: Int, row: Int) {
+        val screen = emulator?.screen ?: return
+        val actualRow = topRow + row
+        
+        // Find word boundaries
+        val internalRow = screen.externalToInternalRow(actualRow)
+        val lineObject = try {
+            screen.allocateFullLineIfNecessary(internalRow)
+        } catch (e: Exception) {
+            return
+        }
+        
+        val line = lineObject.mText
+        val lineLen = lineObject.spaceUsed
+        
+        // Find start of word
+        var startCol = col
+        while (startCol > 0 && startCol < lineLen && !Character.isWhitespace(line[startCol - 1])) {
+            startCol--
+        }
+        
+        // Find end of word
+        var endCol = col
+        while (endCol < lineLen - 1 && endCol < columns - 1 && !Character.isWhitespace(line[endCol + 1])) {
+            endCol++
+        }
+        
+        selStartCol = startCol
+        selStartRow = actualRow
+        selEndCol = endCol
+        selEndRow = actualRow
+        invalidate()
+    }
+    
+    fun copySelectionToClipboard() {
+        if (!hasSelection()) return
+        
+        val text = getSelectedText(selStartCol, selStartRow, selEndCol, selEndRow)
+        if (!text.isNullOrEmpty()) {
+            copyToClipboard(text)
+            clearSelection()
+            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
     private fun updateFontMetrics() {
+        paint.typeface = currentTypeface
         paint.textSize = fontSize * resources.displayMetrics.density
+        // Use a monospace character to calculate exact width
         fontWidth = paint.measureText("M")
         val metrics = paint.fontMetrics
-        fontHeight = metrics.descent - metrics.ascent
+        // Tight font spacing - use leading for proper line spacing
+        fontHeight = metrics.descent - metrics.ascent + metrics.leading
         fontAscent = -metrics.ascent
+    }
+    
+    // Set custom font
+    fun setTypeface(typeface: Typeface) {
+        currentTypeface = typeface
+        paint.typeface = typeface
+        updateFontMetrics()
+        if (width > 0 && height > 0) {
+            recalculateSize()
+        }
+        invalidate()
+    }
+    
+    // Set font from file path
+    fun setFontFromPath(fontPath: String): Boolean {
+        return try {
+            val typeface = Typeface.createFromFile(fontPath)
+            setTypeface(typeface)
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
     
     fun setFontSize(size: Float) {
@@ -463,6 +779,11 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
             recalculateSize()
         }
         invalidate()
+    }
+    
+    // Send key bytes directly to SSH
+    fun sendKey(bytes: ByteArray) {
+        writeCallback?.invoke(bytes)
     }
     
     private fun recalculateSize() {
@@ -528,7 +849,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         imm.showSoftInput(this, 0)
     }
     
-    private fun pasteFromClipboard() {
+    fun pasteFromClipboard() {
         val clip = clipboard.primaryClip
         if (clip != null && clip.itemCount > 0) {
             val text = clip.getItemAt(0).text?.toString()
@@ -637,6 +958,34 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
                 canvas.drawRect(cursorX, cursorY, cursorX + fontWidth, cursorY + fontHeight, paint)
                 paint.alpha = 255
             }
+        }
+        
+        // Draw selection highlight
+        if (hasSelection()) {
+            drawSelection(canvas)
+        }
+    }
+    
+    private fun drawSelection(canvas: Canvas) {
+        // Normalize selection coordinates (start should be before end)
+        val startRow = minOf(selStartRow, selEndRow)
+        val endRow = maxOf(selStartRow, selEndRow)
+        val startCol = if (selStartRow <= selEndRow) selStartCol else selEndCol
+        val endCol = if (selStartRow <= selEndRow) selEndCol else selStartCol
+        
+        for (row in startRow..endRow) {
+            val displayRow = row - topRow
+            if (displayRow < 0 || displayRow >= rows) continue
+            
+            val rowStartCol = if (row == startRow) startCol else 0
+            val rowEndCol = if (row == endRow) endCol else columns - 1
+            
+            val x1 = rowStartCol * fontWidth
+            val y1 = displayRow * fontHeight
+            val x2 = (rowEndCol + 1) * fontWidth
+            val y2 = (displayRow + 1) * fontHeight
+            
+            canvas.drawRect(x1, y1, x2, y2, selectionPaint)
         }
     }
     
