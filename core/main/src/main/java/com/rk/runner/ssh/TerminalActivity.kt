@@ -632,7 +632,9 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
             if (scroller.computeScrollOffset()) {
                 val newTopRow = scroller.currY
                 if (newTopRow != topRow) {
-                    topRow = newTopRow
+                    val screen = emulator?.screen
+                    val maxScroll = screen?.activeTranscriptRows ?: 0
+                    topRow = newTopRow.coerceIn(-maxScroll, 0)
                     invalidate()
                 }
                 post(this)
@@ -953,12 +955,25 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         
         // Draw terminal content with scrollback support
         // Use batch rendering for better performance and correct spacing
+        val activeTranscriptRows = screen.activeTranscriptRows
+        val screenRows = screen.mScreenRows
+        
         for (row in 0 until rows) {
             val y = row * fontHeight + fontAscent
             val screenRow = topRow + row
             
+            // Validate that screenRow is within valid range before accessing
+            // Valid range is: -activeTranscriptRows to screenRows-1
+            if (screenRow < -activeTranscriptRows || screenRow >= screenRows) {
+                continue
+            }
+            
             // Get the terminal row
-            val internalRow = screen.externalToInternalRow(screenRow)
+            val internalRow = try {
+                screen.externalToInternalRow(screenRow)
+            } catch (e: IllegalArgumentException) {
+                continue
+            }
             val lineObject = try {
                 screen.allocateFullLineIfNecessary(internalRow)
             } catch (e: Exception) {
