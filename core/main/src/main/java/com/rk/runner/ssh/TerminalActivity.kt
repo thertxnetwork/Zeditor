@@ -1,9 +1,19 @@
 package com.rk.runner.ssh
 
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Typeface
 import android.os.Bundle
+import android.util.AttributeSet
 import android.util.Log
+import android.view.GestureDetector
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.View
+import android.view.inputmethod.BaseInputConnection
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,15 +38,18 @@ import com.rk.DefaultScope
 import com.rk.theme.XedTheme
 import com.rk.settings.Settings
 import com.rk.settings.ssh.TerminalThemes
+import com.termux.terminal.TerminalBuffer
 import com.termux.terminal.TerminalEmulator
-import com.termux.terminal.TerminalSession
-import com.termux.terminal.TerminalSessionClient
-import com.termux.view.TerminalView
-import com.termux.view.TerminalViewClient
+import com.termux.terminal.TerminalOutput
+import com.termux.view.TerminalRenderer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.OutputStream
 
+/**
+ * Activity for displaying SSH terminal sessions using ReTerminal's rendering components.
+ */
 class TerminalActivity : ComponentActivity() {
     
     companion object {
@@ -87,13 +100,11 @@ fun TerminalScreen(
     fileName: String?,
     onBackPressed: () -> Unit
 ) {
-    val context = LocalContext.current
     var statusText by remember { mutableStateOf("Connecting to ${server.name}...") }
     var isConnected by remember { mutableStateOf(false) }
     var connectionManager by remember { mutableStateOf<SSHConnectionManager?>(null) }
     var shellChannel by remember { mutableStateOf<ShellChannel?>(null) }
-    var terminalView by remember { mutableStateOf<TerminalView?>(null) }
-    var sshSession by remember { mutableStateOf<SSHTerminalSession?>(null) }
+    var terminalView by remember { mutableStateOf<SSHTerminalView?>(null) }
     
     // Extra key row state
     var ctrlActive by remember { mutableStateOf(false) }
@@ -101,13 +112,12 @@ fun TerminalScreen(
     var shiftActive by remember { mutableStateOf(false) }
     
     // Connect the shell channel to terminal view when both are available
-    LaunchedEffect(shellChannel, terminalView, sshSession) {
+    LaunchedEffect(shellChannel, terminalView) {
         val channel = shellChannel
         val view = terminalView
-        val session = sshSession
-        if (channel != null && view != null && session != null) {
-            // Set up the SSH session to write to the channel
-            session.setOutputStream(channel.outputStream)
+        if (channel != null && view != null) {
+            // Set up the terminal to write to the SSH channel
+            view.setOutputStream(channel.outputStream)
             
             // Start reading from SSH and feeding to terminal
             DefaultScope.launch(Dispatchers.IO) {
@@ -116,9 +126,9 @@ fun TerminalScreen(
                     while (channel.isOpen()) {
                         val bytesRead = channel.inputStream.read(buffer)
                         if (bytesRead > 0) {
-                            session.processInput(buffer, bytesRead)
+                            view.appendData(buffer, bytesRead)
                             withContext(Dispatchers.Main) {
-                                view.onScreenUpdated()
+                                view.invalidate()
                             }
                         } else if (bytesRead == -1) {
                             break
@@ -243,7 +253,7 @@ fun TerminalScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .imePadding() // Handle keyboard insets
+                .imePadding()
         ) {
             // Status bar
             if (statusText.isNotEmpty()) {
@@ -267,56 +277,27 @@ fun TerminalScreen(
             ) {
                 AndroidView(
                     factory = { ctx ->
-                        TerminalView(ctx, null).also { view ->
-                            // Create session client and view client
-                            val sessionClient = SSHTerminalSessionClient()
-                            val viewClient = SSHTerminalViewClient(view, 
-                                onCtrlRead = { ctrlActive },
-                                onAltRead = { altActive },
-                                onShiftRead = { shiftActive }
-                            )
-                            
-                            // Create the SSH terminal session
-                            val session = SSHTerminalSession(sessionClient)
-                            
-                            // Set up the terminal view
-                            view.setTerminalViewClient(viewClient)
-                            view.attachSession(session)
-                            
+                        SSHTerminalView(ctx).also { view ->
                             // Apply theme
                             val theme = TerminalThemes.getThemeById(Settings.terminal_theme)
-                            session.emulator?.mColors?.apply {
-                                mCurrentColors[0] = theme.black
-                                mCurrentColors[1] = theme.red
-                                mCurrentColors[2] = theme.green
-                                mCurrentColors[3] = theme.yellow
-                                mCurrentColors[4] = theme.blue
-                                mCurrentColors[5] = theme.magenta
-                                mCurrentColors[6] = theme.cyan
-                                mCurrentColors[7] = theme.white
-                                mCurrentColors[8] = theme.brightBlack
-                                mCurrentColors[9] = theme.brightRed
-                                mCurrentColors[10] = theme.brightGreen
-                                mCurrentColors[11] = theme.brightYellow
-                                mCurrentColors[12] = theme.brightBlue
-                                mCurrentColors[13] = theme.brightMagenta
-                                mCurrentColors[14] = theme.brightCyan
-                                mCurrentColors[15] = theme.brightWhite
-                                mCurrentColors[256] = theme.foregroundColor
-                                mCurrentColors[258] = theme.backgroundColor
-                                mCurrentColors[259] = theme.cursorColor
-                            }
-                            
+                            view.setTerminalColors(theme)
                             view.setTextSize(Settings.terminal_font_size)
-                            view.setBackgroundColor(theme.backgroundColor)
-                            
+                            view.setModifierKeyStates(
+                                ctrlGetter = { ctrlActive },
+                                altGetter = { altActive },
+                                shiftGetter = { shiftActive }
+                            )
                             terminalView = view
-                            sshSession = session
                         }
                     },
                     modifier = Modifier.fillMaxSize(),
                     update = { view ->
-                        // View updates are handled through state
+                        // Update modifier states
+                        view.setModifierKeyStates(
+                            ctrlGetter = { ctrlActive },
+                            altGetter = { altActive },
+                            shiftGetter = { shiftActive }
+                        )
                     }
                 )
             }
@@ -324,7 +305,7 @@ fun TerminalScreen(
             // Extra key row
             if (Settings.terminal_show_extra_keys) {
                 ExtraKeyRow(
-                    sshSession = sshSession,
+                    terminalView = terminalView,
                     ctrlActive = ctrlActive,
                     altActive = altActive,
                     shiftActive = shiftActive,
@@ -339,7 +320,7 @@ fun TerminalScreen(
 
 @Composable
 fun ExtraKeyRow(
-    sshSession: SSHTerminalSession?,
+    terminalView: SSHTerminalView?,
     ctrlActive: Boolean,
     altActive: Boolean,
     shiftActive: Boolean,
@@ -361,80 +342,35 @@ fun ExtraKeyRow(
         ) {
             // ESC key
             ExtraKeyButton(text = "ESC") {
-                sshSession?.write(byteArrayOf(0x1B))
+                terminalView?.writeToTerminal(byteArrayOf(0x1B))
             }
             
             // Tab key
             ExtraKeyButton(text = "TAB") {
-                sshSession?.write(byteArrayOf('\t'.code.toByte()))
+                terminalView?.writeToTerminal(byteArrayOf('\t'.code.toByte()))
             }
             
-            // Ctrl modifier (toggle)
-            ExtraKeyButton(
-                text = "CTRL",
-                isActive = ctrlActive,
-                onClick = onCtrlToggle
-            )
-            
-            // Alt modifier (toggle)
-            ExtraKeyButton(
-                text = "ALT",
-                isActive = altActive,
-                onClick = onAltToggle
-            )
-            
-            // Shift modifier (toggle)
-            ExtraKeyButton(
-                text = "SHIFT",
-                isActive = shiftActive,
-                onClick = onShiftToggle
-            )
+            // Modifier keys (toggles)
+            ExtraKeyButton(text = "CTRL", isActive = ctrlActive, onClick = onCtrlToggle)
+            ExtraKeyButton(text = "ALT", isActive = altActive, onClick = onAltToggle)
+            ExtraKeyButton(text = "SHIFT", isActive = shiftActive, onClick = onShiftToggle)
             
             if (Settings.terminal_show_arrow_keys) {
-                // Arrow keys
-                ExtraKeyButton(text = "↑") {
-                    sshSession?.write("\u001B[A".toByteArray())
-                }
-                ExtraKeyButton(text = "↓") {
-                    sshSession?.write("\u001B[B".toByteArray())
-                }
-                ExtraKeyButton(text = "←") {
-                    sshSession?.write("\u001B[D".toByteArray())
-                }
-                ExtraKeyButton(text = "→") {
-                    sshSession?.write("\u001B[C".toByteArray())
-                }
+                ExtraKeyButton(text = "↑") { terminalView?.writeToTerminal("\u001B[A".toByteArray()) }
+                ExtraKeyButton(text = "↓") { terminalView?.writeToTerminal("\u001B[B".toByteArray()) }
+                ExtraKeyButton(text = "←") { terminalView?.writeToTerminal("\u001B[D".toByteArray()) }
+                ExtraKeyButton(text = "→") { terminalView?.writeToTerminal("\u001B[C".toByteArray()) }
             }
             
-            // Home/End
-            ExtraKeyButton(text = "HOME") {
-                sshSession?.write("\u001B[H".toByteArray())
-            }
-            ExtraKeyButton(text = "END") {
-                sshSession?.write("\u001B[F".toByteArray())
-            }
+            ExtraKeyButton(text = "HOME") { terminalView?.writeToTerminal("\u001B[H".toByteArray()) }
+            ExtraKeyButton(text = "END") { terminalView?.writeToTerminal("\u001B[F".toByteArray()) }
+            ExtraKeyButton(text = "PGUP") { terminalView?.writeToTerminal("\u001B[5~".toByteArray()) }
+            ExtraKeyButton(text = "PGDN") { terminalView?.writeToTerminal("\u001B[6~".toByteArray()) }
             
-            // Page Up/Down
-            ExtraKeyButton(text = "PGUP") {
-                sshSession?.write("\u001B[5~".toByteArray())
-            }
-            ExtraKeyButton(text = "PGDN") {
-                sshSession?.write("\u001B[6~".toByteArray())
-            }
-            
-            // Common shortcuts
-            ExtraKeyButton(text = "-") {
-                sshSession?.write("-".toByteArray())
-            }
-            ExtraKeyButton(text = "/") {
-                sshSession?.write("/".toByteArray())
-            }
-            ExtraKeyButton(text = "|") {
-                sshSession?.write("|".toByteArray())
-            }
-            ExtraKeyButton(text = "~") {
-                sshSession?.write("~".toByteArray())
-            }
+            ExtraKeyButton(text = "-") { terminalView?.writeToTerminal("-".toByteArray()) }
+            ExtraKeyButton(text = "/") { terminalView?.writeToTerminal("/".toByteArray()) }
+            ExtraKeyButton(text = "|") { terminalView?.writeToTerminal("|".toByteArray()) }
+            ExtraKeyButton(text = "~") { terminalView?.writeToTerminal("~".toByteArray()) }
         }
     }
 }
@@ -448,8 +384,7 @@ fun ExtraKeyButton(
     Surface(
         color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
         shape = MaterialTheme.shapes.small,
-        modifier = Modifier
-            .clickable(onClick = onClick)
+        modifier = Modifier.clickable(onClick = onClick)
     ) {
         Text(
             text = text,
@@ -462,211 +397,317 @@ fun ExtraKeyButton(
 }
 
 /**
- * Custom TerminalSession that works with SSH streams instead of local PTY.
- * This is a simplified implementation that delegates terminal emulation to the parent
- * but handles I/O through SSH channels.
+ * SSH Terminal View using ReTerminal's TerminalEmulator and TerminalRenderer.
+ * This view handles terminal emulation and rendering for SSH connections.
  */
-class SSHTerminalSession(
-    private val client: TerminalSessionClient
-) : TerminalSession("/system/bin/sh", "/", arrayOf(), arrayOf(), 2000, client) {
+class SSHTerminalView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : View(context, attrs, defStyleAttr) {
     
-    private var sshOutputStream: java.io.OutputStream? = null
-    var emulator: TerminalEmulator? = null
-        private set
-    
-    init {
-        // Initialize emulator with default size
-        initializeForSSH(80, 24)
+    companion object {
+        private const val TAG = "SSHTerminalView"
+        private const val DEFAULT_COLUMNS = 80
+        private const val DEFAULT_ROWS = 24
+        private const val DEFAULT_TRANSCRIPT_ROWS = 2000
     }
     
-    private fun initializeForSSH(columns: Int, rows: Int) {
-        // Create emulator without starting a subprocess
+    // Terminal emulation components from ReTerminal
+    private var emulator: TerminalEmulator? = null
+    private var renderer: TerminalRenderer? = null
+    private var terminalOutput: SSHTerminalOutput? = null
+    
+    // SSH output stream
+    private var outputStream: OutputStream? = null
+    
+    // Display settings
+    private var textSize = 14
+    private var backgroundColor = 0xFF1E1E1E.toInt()
+    private var foregroundColor = 0xFFD4D4D4.toInt()
+    
+    // Scrolling
+    private var topRow = 0
+    
+    // Modifier key state getters
+    private var ctrlKeyGetter: () -> Boolean = { false }
+    private var altKeyGetter: () -> Boolean = { false }
+    private var shiftKeyGetter: () -> Boolean = { false }
+    
+    // Gesture detector for taps
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onSingleTapUp(e: MotionEvent): Boolean {
+            requestFocus()
+            showSoftKeyboard()
+            return true
+        }
+        
+        override fun onLongPress(e: MotionEvent) {
+            // Could implement copy/paste here
+        }
+    })
+    
+    init {
+        isFocusable = true
+        isFocusableInTouchMode = true
+        initializeTerminal()
+    }
+    
+    private fun initializeTerminal() {
+        renderer = TerminalRenderer(textSize, Typeface.MONOSPACE)
+        terminalOutput = SSHTerminalOutput { data, offset, count ->
+            try {
+                outputStream?.write(data, offset, count)
+                outputStream?.flush()
+            } catch (e: Exception) {
+                Log.e(TAG, "Write error: ${e.message}")
+            }
+        }
+        
         emulator = TerminalEmulator(
-            this,
-            columns,
-            rows,
-            16,  // cell width pixels
-            32,  // cell height pixels
-            2000, // transcript rows
-            client
+            terminalOutput,
+            DEFAULT_COLUMNS,
+            DEFAULT_ROWS,
+            renderer!!.getFontWidth().toInt(),
+            renderer!!.getFontLineSpacing(),
+            DEFAULT_TRANSCRIPT_ROWS,
+            null // TerminalSessionClient not needed for direct emulator usage
         )
     }
     
-    fun setOutputStream(outputStream: java.io.OutputStream) {
-        sshOutputStream = outputStream
+    fun setOutputStream(stream: OutputStream) {
+        outputStream = stream
     }
     
-    /**
-     * Process input from SSH channel and feed to emulator
-     */
-    fun processInput(data: ByteArray, length: Int) {
+    fun appendData(data: ByteArray, length: Int) {
         emulator?.append(data, length)
     }
     
-    /**
-     * Write data to SSH channel
-     */
-    override fun write(data: ByteArray, offset: Int, count: Int) {
+    fun writeToTerminal(data: ByteArray) {
         try {
-            sshOutputStream?.write(data, offset, count)
-            sshOutputStream?.flush()
+            outputStream?.write(data)
+            outputStream?.flush()
         } catch (e: Exception) {
-            Log.e("SSHTerminalSession", "Write error: ${e.message}")
+            Log.e(TAG, "Write error: ${e.message}")
         }
     }
     
-    /**
-     * Write data to SSH channel (convenience method)
-     */
-    fun write(data: ByteArray) {
-        write(data, 0, data.size)
+    fun setTextSize(size: Int) {
+        textSize = size
+        renderer = TerminalRenderer(size, Typeface.MONOSPACE)
+        updateTerminalSize()
+        invalidate()
     }
     
-    override fun getEmulator(): TerminalEmulator? = emulator
+    fun setTerminalColors(theme: com.rk.settings.ssh.TerminalTheme) {
+        backgroundColor = theme.backgroundColor
+        foregroundColor = theme.foregroundColor
+        
+        emulator?.mColors?.apply {
+            mCurrentColors[0] = theme.black
+            mCurrentColors[1] = theme.red
+            mCurrentColors[2] = theme.green
+            mCurrentColors[3] = theme.yellow
+            mCurrentColors[4] = theme.blue
+            mCurrentColors[5] = theme.magenta
+            mCurrentColors[6] = theme.cyan
+            mCurrentColors[7] = theme.white
+            mCurrentColors[8] = theme.brightBlack
+            mCurrentColors[9] = theme.brightRed
+            mCurrentColors[10] = theme.brightGreen
+            mCurrentColors[11] = theme.brightYellow
+            mCurrentColors[12] = theme.brightBlue
+            mCurrentColors[13] = theme.brightMagenta
+            mCurrentColors[14] = theme.brightCyan
+            mCurrentColors[15] = theme.brightWhite
+            mCurrentColors[256] = theme.foregroundColor
+            mCurrentColors[258] = theme.backgroundColor
+            mCurrentColors[259] = theme.cursorColor
+        }
+        
+        invalidate()
+    }
     
-    override fun updateSize(columns: Int, rows: Int, cellWidthPixels: Int, cellHeightPixels: Int) {
-        if (emulator == null) {
-            initializeForSSH(columns, rows)
+    fun setModifierKeyStates(
+        ctrlGetter: () -> Boolean,
+        altGetter: () -> Boolean,
+        shiftGetter: () -> Boolean
+    ) {
+        ctrlKeyGetter = ctrlGetter
+        altKeyGetter = altGetter
+        shiftKeyGetter = shiftGetter
+    }
+    
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        updateTerminalSize()
+    }
+    
+    private fun updateTerminalSize() {
+        val r = renderer ?: return
+        val em = emulator ?: return
+        
+        if (width == 0 || height == 0) return
+        
+        val newColumns = maxOf(4, (width / r.getFontWidth()).toInt())
+        val newRows = maxOf(4, (height - r.mFontLineSpacingAndAscent) / r.getFontLineSpacing())
+        
+        if (newColumns != em.mColumns || newRows != em.mRows) {
+            em.resize(newColumns, newRows, r.getFontWidth().toInt(), r.getFontLineSpacing())
+            topRow = 0
+        }
+    }
+    
+    override fun onDraw(canvas: Canvas) {
+        val em = emulator
+        val r = renderer
+        
+        if (em == null || r == null) {
+            canvas.drawColor(backgroundColor)
+            return
+        }
+        
+        // Draw background
+        canvas.drawColor(backgroundColor)
+        
+        // Render terminal content
+        r.render(em, canvas, topRow, -1, -1, -1, -1)
+    }
+    
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        gestureDetector.onTouchEvent(event)
+        return true
+    }
+    
+    override fun onCheckIsTextEditor(): Boolean = true
+    
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
+        outAttrs.inputType = android.text.InputType.TYPE_NULL
+        outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN
+        
+        return object : BaseInputConnection(this, true) {
+            override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
+                if (text != null) {
+                    sendTextToTerminal(text)
+                }
+                return true
+            }
+            
+            override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
+                for (i in 0 until beforeLength) {
+                    writeToTerminal(byteArrayOf(0x7F)) // DEL
+                }
+                return true
+            }
+        }
+    }
+    
+    private fun sendTextToTerminal(text: CharSequence) {
+        val ctrl = ctrlKeyGetter()
+        
+        for (i in text.indices) {
+            var codePoint = text[i].code
+            
+            if (ctrl && codePoint >= 'a'.code && codePoint <= 'z'.code) {
+                codePoint = codePoint - 'a'.code + 1
+            } else if (ctrl && codePoint >= 'A'.code && codePoint <= 'Z'.code) {
+                codePoint = codePoint - 'A'.code + 1
+            }
+            
+            if (codePoint == '\n'.code) {
+                codePoint = '\r'.code
+            }
+            
+            writeCodePoint(codePoint)
+        }
+    }
+    
+    private fun writeCodePoint(codePoint: Int) {
+        val alt = altKeyGetter()
+        val bytes = mutableListOf<Byte>()
+        
+        if (alt) {
+            bytes.add(0x1B) // ESC for alt
+        }
+        
+        if (codePoint <= 0x7F) {
+            bytes.add(codePoint.toByte())
+        } else if (codePoint <= 0x7FF) {
+            bytes.add((0xC0 or (codePoint shr 6)).toByte())
+            bytes.add((0x80 or (codePoint and 0x3F)).toByte())
+        } else if (codePoint <= 0xFFFF) {
+            bytes.add((0xE0 or (codePoint shr 12)).toByte())
+            bytes.add((0x80 or ((codePoint shr 6) and 0x3F)).toByte())
+            bytes.add((0x80 or (codePoint and 0x3F)).toByte())
         } else {
-            emulator?.resize(columns, rows, cellWidthPixels, cellHeightPixels)
+            bytes.add((0xF0 or (codePoint shr 18)).toByte())
+            bytes.add((0x80 or ((codePoint shr 12) and 0x3F)).toByte())
+            bytes.add((0x80 or ((codePoint shr 6) and 0x3F)).toByte())
+            bytes.add((0x80 or (codePoint and 0x3F)).toByte())
         }
+        
+        writeToTerminal(bytes.toByteArray())
+    }
+    
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (emulator == null) return super.onKeyDown(keyCode, event)
+        
+        when (keyCode) {
+            KeyEvent.KEYCODE_ENTER -> writeToTerminal(byteArrayOf('\r'.code.toByte()))
+            KeyEvent.KEYCODE_DEL -> writeToTerminal(byteArrayOf(0x7F))
+            KeyEvent.KEYCODE_TAB -> writeToTerminal(byteArrayOf('\t'.code.toByte()))
+            KeyEvent.KEYCODE_ESCAPE -> writeToTerminal(byteArrayOf(0x1B))
+            KeyEvent.KEYCODE_DPAD_UP -> writeToTerminal("\u001B[A".toByteArray())
+            KeyEvent.KEYCODE_DPAD_DOWN -> writeToTerminal("\u001B[B".toByteArray())
+            KeyEvent.KEYCODE_DPAD_RIGHT -> writeToTerminal("\u001B[C".toByteArray())
+            KeyEvent.KEYCODE_DPAD_LEFT -> writeToTerminal("\u001B[D".toByteArray())
+            else -> {
+                val unicodeChar = event.unicodeChar
+                if (unicodeChar != 0) {
+                    sendTextToTerminal(unicodeChar.toChar().toString())
+                    return true
+                }
+                return super.onKeyDown(keyCode, event)
+            }
+        }
+        return true
+    }
+    
+    private fun showSoftKeyboard() {
+        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
     }
 }
 
 /**
- * Terminal session client for SSH
+ * Terminal output handler that sends data to SSH stream.
  */
-class SSHTerminalSessionClient : TerminalSessionClient {
-    override fun onTextChanged(changedSession: TerminalSession) {
-        // Handle text changes if needed
+class SSHTerminalOutput(
+    private val writeHandler: (ByteArray, Int, Int) -> Unit
+) : TerminalOutput() {
+    
+    override fun write(data: ByteArray, offset: Int, count: Int) {
+        writeHandler(data, offset, count)
     }
     
-    override fun onTitleChanged(changedSession: TerminalSession) {}
-    
-    override fun onSessionFinished(finishedSession: TerminalSession) {}
-    
-    override fun onCopyTextToClipboard(session: TerminalSession, text: String) {}
-    
-    override fun onPasteTextFromClipboard(session: TerminalSession?) {}
-    
-    override fun onBell(session: TerminalSession) {}
-    
-    override fun onColorsChanged(session: TerminalSession) {}
-    
-    override fun onTerminalCursorStateChange(state: Boolean) {}
-    
-    override fun setTerminalShellPid(session: TerminalSession, pid: Int) {}
-    
-    override fun getTerminalCursorStyle(): Int = TerminalEmulator.DEFAULT_TERMINAL_CURSOR_STYLE
-    
-    override fun logError(tag: String?, message: String?) {
-        Log.e(tag ?: "SSHTerminal", message ?: "")
+    override fun titleChanged(oldTitle: String?, newTitle: String?) {
+        // Not used for SSH
     }
     
-    override fun logWarn(tag: String?, message: String?) {
-        Log.w(tag ?: "SSHTerminal", message ?: "")
+    override fun onCopyTextToClipboard(text: String?) {
+        // Could implement clipboard support
     }
     
-    override fun logInfo(tag: String?, message: String?) {
-        Log.i(tag ?: "SSHTerminal", message ?: "")
+    override fun onPasteTextFromClipboard() {
+        // Could implement clipboard support
     }
     
-    override fun logDebug(tag: String?, message: String?) {
-        Log.d(tag ?: "SSHTerminal", message ?: "")
+    override fun onBell() {
+        // Could implement bell sound
     }
     
-    override fun logVerbose(tag: String?, message: String?) {
-        Log.v(tag ?: "SSHTerminal", message ?: "")
-    }
-    
-    override fun logStackTraceWithMessage(tag: String?, message: String?, e: Exception?) {
-        Log.e(tag ?: "SSHTerminal", message ?: "", e)
-    }
-    
-    override fun logStackTrace(tag: String?, e: Exception?) {
-        Log.e(tag ?: "SSHTerminal", "Stack trace", e)
-    }
-}
-
-/**
- * Terminal view client for SSH
- */
-class SSHTerminalViewClient(
-    private val terminalView: TerminalView,
-    private val onCtrlRead: () -> Boolean,
-    private val onAltRead: () -> Boolean,
-    private val onShiftRead: () -> Boolean
-) : TerminalViewClient {
-    
-    override fun onScale(scale: Float): Float {
-        val fontScale = scale.coerceIn(8f, 32f)
-        terminalView.setTextSize(fontScale.toInt())
-        return fontScale
-    }
-    
-    override fun onSingleTapUp(e: MotionEvent) {
-        terminalView.requestFocus()
-        val imm = terminalView.context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) 
-            as android.view.inputmethod.InputMethodManager
-        imm.showSoftInput(terminalView, 0)
-    }
-    
-    override fun shouldBackButtonBeMappedToEscape(): Boolean = false
-    
-    override fun shouldEnforceCharBasedInput(): Boolean = true
-    
-    override fun shouldUseCtrlSpaceWorkaround(): Boolean = true
-    
-    override fun isTerminalViewSelected(): Boolean = true
-    
-    override fun copyModeChanged(copyMode: Boolean) {}
-    
-    override fun onKeyDown(keyCode: Int, e: KeyEvent, session: TerminalSession): Boolean = false
-    
-    override fun onKeyUp(keyCode: Int, e: KeyEvent): Boolean = false
-    
-    override fun onLongPress(event: MotionEvent): Boolean = false
-    
-    override fun readControlKey(): Boolean = onCtrlRead()
-    
-    override fun readAltKey(): Boolean = onAltRead()
-    
-    override fun readShiftKey(): Boolean = onShiftRead()
-    
-    override fun readFnKey(): Boolean = false
-    
-    override fun onCodePoint(codePoint: Int, ctrlDown: Boolean, session: TerminalSession): Boolean = false
-    
-    override fun onEmulatorSet() {
-        terminalView.setTerminalCursorBlinkerState(true, true)
-    }
-    
-    override fun logError(tag: String?, message: String?) {
-        Log.e(tag ?: "TerminalView", message ?: "")
-    }
-    
-    override fun logWarn(tag: String?, message: String?) {
-        Log.w(tag ?: "TerminalView", message ?: "")
-    }
-    
-    override fun logInfo(tag: String?, message: String?) {
-        Log.i(tag ?: "TerminalView", message ?: "")
-    }
-    
-    override fun logDebug(tag: String?, message: String?) {
-        Log.d(tag ?: "TerminalView", message ?: "")
-    }
-    
-    override fun logVerbose(tag: String?, message: String?) {
-        Log.v(tag ?: "TerminalView", message ?: "")
-    }
-    
-    override fun logStackTraceWithMessage(tag: String?, message: String?, e: Exception?) {
-        Log.e(tag ?: "TerminalView", message ?: "", e)
-    }
-    
-    override fun logStackTrace(tag: String?, e: Exception?) {
-        Log.e(tag ?: "TerminalView", "Stack trace", e)
+    override fun onColorsChanged() {
+        // Not used for SSH
     }
 }
 
