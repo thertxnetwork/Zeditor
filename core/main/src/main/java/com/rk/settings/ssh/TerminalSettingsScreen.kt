@@ -19,7 +19,6 @@ import com.rk.settings.Settings
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TerminalSettingsScreen() {
-    val context = LocalContext.current
     var showThemeDialog by remember { mutableStateOf(false) }
     var showFontDialog by remember { mutableStateOf(false) }
     var showFontSizeDialog by remember { mutableStateOf(false) }
