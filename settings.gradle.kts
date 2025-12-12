@@ -84,7 +84,7 @@ include(":benchmark2")
 // ReTerminal submodule - terminal emulator library
 val reTerminal = file("ReTerminal")
 
-if (!(reTerminal.exists() && reTerminal.listFiles()?.isNotEmpty() == true)) {
+if (!(reTerminal.exists() && reTerminal.isDirectory && reTerminal.listFiles()?.isNotEmpty() == true)) {
     throw GradleException(
         """
         The 'ReTerminal' submodule is missing or empty.
