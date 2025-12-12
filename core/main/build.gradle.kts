@@ -129,10 +129,8 @@ dependencies {
     // SSH support for VPS code runner
     implementation(libs.jsch)
     
-    // ReTerminal - Terminal emulator library
-    // (https://github.com/RohitKushvaha01/ReTerminal)
-    implementation("com.github.RohitKushvaha01.ReTerminal:core-terminal-emulator:v1.2.0")
-    implementation("com.github.RohitKushvaha01.ReTerminal:core-terminal-view:v1.2.0")
+    // Termux terminal classes are now included directly in the codebase
+    // (copied from termux-app terminal-emulator module)
 }
 
 abstract class GenerateSupportedLocales : DefaultTask() {
