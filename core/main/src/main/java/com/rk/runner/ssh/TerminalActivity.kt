@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.text.InputType
 import android.view.GestureDetector
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -22,6 +23,9 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.widget.OverScroller
+import android.widget.PopupWindow
+import android.widget.LinearLayout
+import android.widget.Button
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -254,22 +258,6 @@ fun TerminalScreen(
                     }
                 },
                 actions = {
-                    // Copy button
-                    TextButton(
-                        onClick = {
-                            terminalView?.copySelectionToClipboard()
-                        }
-                    ) {
-                        Text("Copy", color = MaterialTheme.colorScheme.onSurface)
-                    }
-                    // Paste button
-                    TextButton(
-                        onClick = {
-                            terminalView?.pasteFromClipboard()
-                        }
-                    ) {
-                        Text("Paste", color = MaterialTheme.colorScheme.onSurface)
-                    }
                     if (isConnected) {
                         IconButton(
                             onClick = {
@@ -526,6 +514,11 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
     private var selStartRow = -1
     private var selEndCol = -1
     private var selEndRow = -1
+    private var draggingStartHandle = false
+    private var draggingEndHandle = false
+    
+    // Copy/Paste popup
+    private var copyPastePopup: android.widget.PopupWindow? = null
     
     // Gesture support for scroll, zoom, and selection
     private val gestureDetector: GestureDetector
@@ -605,16 +598,18 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
             }
             
             override fun onLongPress(e: MotionEvent) {
-                // Start selection or paste
+                // Start selection or show popup
                 val col = (e.x / fontWidth).toInt().coerceIn(0, columns - 1)
                 val row = (e.y / fontHeight).toInt().coerceIn(0, rows - 1) + topRow
                 
                 if (hasSelection()) {
-                    // Show copy/paste options
-                    copySelectionToClipboard()
+                    // Show copy/paste popup
+                    showCopyPastePopup(e.x, e.y)
                 } else {
-                    // Start selection
-                    startSelection(col, row)
+                    // Start selection by selecting word at position
+                    selectWordAt(col, row - topRow)
+                    // Show popup after selection
+                    showCopyPastePopup(e.x, e.y)
                 }
             }
         })
@@ -730,8 +725,72 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         if (!text.isNullOrEmpty()) {
             copyToClipboard(text)
             clearSelection()
+            dismissCopyPastePopup()
             Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
         }
+    }
+    
+    private fun showCopyPastePopup(x: Float, y: Float) {
+        dismissCopyPastePopup()
+        
+        val popupLayout = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(Color.parseColor("#333333"))
+            setPadding(16, 8, 16, 8)
+        }
+        
+        val copyBtn = Button(context).apply {
+            text = "Copy"
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.parseColor("#2196F3"))
+            setOnClickListener {
+                copySelectionToClipboard()
+            }
+        }
+        
+        val pasteBtn = Button(context).apply {
+            text = "Paste"
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.parseColor("#4CAF50"))
+            setOnClickListener {
+                pasteFromClipboard()
+                dismissCopyPastePopup()
+                clearSelection()
+            }
+        }
+        
+        val selectAllBtn = Button(context).apply {
+            text = "Select All"
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.parseColor("#FF9800"))
+            setOnClickListener {
+                selectAll()
+                dismissCopyPastePopup()
+            }
+        }
+        
+        popupLayout.addView(copyBtn)
+        popupLayout.addView(pasteBtn)
+        popupLayout.addView(selectAllBtn)
+        
+        copyPastePopup = PopupWindow(popupLayout, LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, true).apply {
+            elevation = 10f
+            showAsDropDown(this@SSHTerminalView, x.toInt(), y.toInt() - 100)
+        }
+    }
+    
+    private fun dismissCopyPastePopup() {
+        copyPastePopup?.dismiss()
+        copyPastePopup = null
+    }
+    
+    private fun selectAll() {
+        val screen = emulator?.screen ?: return
+        selStartCol = 0
+        selStartRow = -screen.activeTranscriptRows
+        selEndCol = columns - 1
+        selEndRow = rows - 1
+        invalidate()
     }
     
     private fun updateFontMetrics() {
@@ -889,6 +948,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         val screen = emu.screen ?: return
         
         // Draw terminal content with scrollback support
+        // Use batch rendering for better performance and correct spacing
         for (row in 0 until rows) {
             val y = row * fontHeight + fontAscent
             val screenRow = topRow + row
@@ -904,12 +964,19 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
             val line = lineObject.mText
             val charsUsed = lineObject.spaceUsed
             
+            // Build text runs with same style for batch rendering
+            var runStartCol = 0
+            var runStartCharIndex = 0
             var currentCharIndex = 0
             var col = 0
+            var currentStyle = if (charsUsed > 0) lineObject.getStyle(0) else 0L
+            var currentFg = TextStyle.decodeForeColor(currentStyle)
+            var currentBg = TextStyle.decodeBackColor(currentStyle)
+            var currentEffect = TextStyle.decodeEffect(currentStyle)
+            
+            val textBuilder = StringBuilder()
             
             while (col < columns && currentCharIndex < charsUsed) {
-                val x = col * fontWidth
-                
                 // Get character
                 val charAtIndex = line[currentCharIndex]
                 val isHighSurrogate = Character.isHighSurrogate(charAtIndex)
@@ -920,38 +987,40 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
                 }
                 val charsForCodePoint = if (isHighSurrogate) 2 else 1
                 
-                // Get style
+                // Get style for this column
                 val style = lineObject.getStyle(col)
-                
-                // Decode colors
                 val fg = TextStyle.decodeForeColor(style)
                 val bg = TextStyle.decodeBackColor(style)
                 val effect = TextStyle.decodeEffect(style)
                 
-                // Draw background if not default
-                val bgColor = getColor(bg, false)
-                if (bgColor != defaultBackground) {
-                    backgroundPaint.color = bgColor
-                    canvas.drawRect(x, row * fontHeight, x + fontWidth, (row + 1) * fontHeight, backgroundPaint)
-                    backgroundPaint.color = defaultBackground
+                // Check if style changed - if so, flush the current run
+                if (fg != currentFg || bg != currentBg || effect != currentEffect) {
+                    // Draw the accumulated text run
+                    if (textBuilder.isNotEmpty()) {
+                        drawTextRun(canvas, textBuilder.toString(), runStartCol, row, y, currentFg, currentBg, currentEffect)
+                        textBuilder.clear()
+                    }
+                    runStartCol = col
+                    runStartCharIndex = currentCharIndex
+                    currentFg = fg
+                    currentBg = bg
+                    currentEffect = effect
                 }
                 
-                // Draw character
-                if (codePoint > 32) {
-                    val fgColor = getColor(fg, true)
-                    paint.color = fgColor
-                    
-                    // Apply effects
-                    paint.isFakeBoldText = (effect and TextStyle.CHARACTER_ATTRIBUTE_BOLD) != 0
-                    paint.isUnderlineText = (effect and TextStyle.CHARACTER_ATTRIBUTE_UNDERLINE) != 0
-                    paint.textSkewX = if ((effect and TextStyle.CHARACTER_ATTRIBUTE_ITALIC) != 0) -0.25f else 0f
-                    
-                    val charStr = String(Character.toChars(codePoint))
-                    canvas.drawText(charStr, x, y, paint)
+                // Add character to run
+                if (codePoint >= 32) {
+                    textBuilder.append(String(Character.toChars(codePoint)))
+                } else {
+                    textBuilder.append(' ')
                 }
                 
                 currentCharIndex += charsForCodePoint
                 col++
+            }
+            
+            // Draw remaining text run
+            if (textBuilder.isNotEmpty()) {
+                drawTextRun(canvas, textBuilder.toString(), runStartCol, row, y, currentFg, currentBg, currentEffect)
             }
         }
         
@@ -998,6 +1067,58 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
             
             canvas.drawRect(x1, y1, x2, y2, selectionPaint)
         }
+        
+        // Draw selection handles for adjustment
+        if (hasSelection()) {
+            drawSelectionHandles(canvas, startRow, startCol, endRow, endCol)
+        }
+    }
+    
+    private fun drawSelectionHandles(canvas: Canvas, startRow: Int, startCol: Int, endRow: Int, endCol: Int) {
+        val handleRadius = 12f * resources.displayMetrics.density
+        val handlePaint = Paint().apply {
+            color = Color.rgb(33, 150, 243) // Material Blue
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+        
+        // Start handle
+        val startDisplayRow = startRow - topRow
+        if (startDisplayRow >= 0 && startDisplayRow < rows) {
+            val x = startCol * fontWidth
+            val y = (startDisplayRow + 1) * fontHeight
+            canvas.drawCircle(x, y, handleRadius, handlePaint)
+        }
+        
+        // End handle
+        val endDisplayRow = endRow - topRow
+        if (endDisplayRow >= 0 && endDisplayRow < rows) {
+            val x = (endCol + 1) * fontWidth
+            val y = (endDisplayRow + 1) * fontHeight
+            canvas.drawCircle(x, y, handleRadius, handlePaint)
+        }
+    }
+    
+    private fun drawTextRun(canvas: Canvas, text: String, startCol: Int, row: Int, y: Float, fg: Int, bg: Int, effect: Int) {
+        val x = startCol * fontWidth
+        val endCol = startCol + text.length
+        
+        // Draw background if not default
+        val bgColor = getColor(bg, false)
+        if (bgColor != defaultBackground) {
+            backgroundPaint.color = bgColor
+            canvas.drawRect(x, row * fontHeight, endCol * fontWidth, (row + 1) * fontHeight, backgroundPaint)
+            backgroundPaint.color = defaultBackground
+        }
+        
+        // Set text color and effects
+        paint.color = getColor(fg, true)
+        paint.isFakeBoldText = (effect and TextStyle.CHARACTER_ATTRIBUTE_BOLD) != 0
+        paint.isUnderlineText = (effect and TextStyle.CHARACTER_ATTRIBUTE_UNDERLINE) != 0
+        paint.textSkewX = if ((effect and TextStyle.CHARACTER_ATTRIBUTE_ITALIC) != 0) -0.25f else 0f
+        
+        // Draw text as a single string - this ensures proper character spacing
+        canvas.drawText(text, x, y, paint)
     }
     
     private fun getColor(colorIndex: Int, isForeground: Boolean): Int {
@@ -1027,6 +1148,64 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
     }
     
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // Handle selection handle dragging
+        if (hasSelection()) {
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    val handleRadius = 20f * resources.displayMetrics.density
+                    val touchX = event.x
+                    val touchY = event.y
+                    
+                    // Check if touching start handle
+                    val startDisplayRow = selStartRow - topRow
+                    if (startDisplayRow >= 0 && startDisplayRow < rows) {
+                        val startHandleX = selStartCol * fontWidth
+                        val startHandleY = (startDisplayRow + 1) * fontHeight
+                        if (kotlin.math.hypot((touchX - startHandleX).toDouble(), (touchY - startHandleY).toDouble()) < handleRadius) {
+                            draggingStartHandle = true
+                            return true
+                        }
+                    }
+                    
+                    // Check if touching end handle
+                    val endDisplayRow = selEndRow - topRow
+                    if (endDisplayRow >= 0 && endDisplayRow < rows) {
+                        val endHandleX = (selEndCol + 1) * fontWidth
+                        val endHandleY = (endDisplayRow + 1) * fontHeight
+                        if (kotlin.math.hypot((touchX - endHandleX).toDouble(), (touchY - endHandleY).toDouble()) < handleRadius) {
+                            draggingEndHandle = true
+                            return true
+                        }
+                    }
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (draggingStartHandle || draggingEndHandle) {
+                        val col = (event.x / fontWidth).toInt().coerceIn(0, columns - 1)
+                        val row = (event.y / fontHeight).toInt().coerceIn(0, rows - 1) + topRow
+                        
+                        if (draggingStartHandle) {
+                            selStartCol = col
+                            selStartRow = row
+                        } else {
+                            selEndCol = col
+                            selEndRow = row
+                        }
+                        invalidate()
+                        return true
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (draggingStartHandle || draggingEndHandle) {
+                        draggingStartHandle = false
+                        draggingEndHandle = false
+                        // Show copy popup after handle drag
+                        showCopyPastePopup(event.x, event.y)
+                        return true
+                    }
+                }
+            }
+        }
+        
         scaleDetector.onTouchEvent(event)
         gestureDetector.onTouchEvent(event)
         return true
