@@ -96,8 +96,9 @@ if (!(reTerminal.exists() && reTerminal.isDirectory && reTerminal.listFiles()?.i
     )
 }
 
-include(":terminal-emulator")
-project(":terminal-emulator").projectDir = file("ReTerminal/core/terminal-emulator")
+// Use matching path structure so ReTerminal's internal references work
+include(":core:terminal-emulator")
+project(":core:terminal-emulator").projectDir = file("ReTerminal/core/terminal-emulator")
 
-include(":terminal-view")
-project(":terminal-view").projectDir = file("ReTerminal/core/terminal-view")
+include(":core:terminal-view")
+project(":core:terminal-view").projectDir = file("ReTerminal/core/terminal-view")

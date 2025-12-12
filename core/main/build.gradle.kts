@@ -130,8 +130,8 @@ dependencies {
     implementation(libs.jsch)
     
     // ReTerminal - Terminal emulator library (via submodule)
-    implementation(project(":terminal-emulator"))
-    implementation(project(":terminal-view"))
+    implementation(project(":core:terminal-emulator"))
+    implementation(project(":core:terminal-view"))
 }
 
 abstract class GenerateSupportedLocales : DefaultTask() {
