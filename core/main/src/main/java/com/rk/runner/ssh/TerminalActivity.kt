@@ -745,7 +745,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         // Use a monospace character to calculate exact width
         fontWidth = paint.measureText("M")
         val metrics = paint.fontMetrics
-        // Tight font spacing - use leading for proper line spacing
+        // Proper font spacing - use leading for line spacing
         fontHeight = metrics.descent - metrics.ascent + metrics.leading
         fontAscent = -metrics.ascent
     }
