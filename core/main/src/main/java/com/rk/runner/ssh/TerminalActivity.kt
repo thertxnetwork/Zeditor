@@ -806,25 +806,25 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
     fun isFnActive() = fnDown
     
     // TerminalSessionClient implementation
-    override fun onTextChanged(changedSession: com.termux.terminal.TerminalSession?) {
+    override fun onTextChanged() {
         mainHandler.post { invalidate() }
     }
     
-    override fun onTitleChanged(changedSession: com.termux.terminal.TerminalSession?) {}
+    override fun onTitleChanged() {}
     
-    override fun onSessionFinished(finishedSession: com.termux.terminal.TerminalSession?) {}
+    override fun onSessionFinished() {}
     
-    override fun onCopyTextToClipboard(session: com.termux.terminal.TerminalSession?, text: String?) {
+    override fun onCopyTextToClipboard(text: String?) {
         text?.let { copyToClipboard(it) }
     }
     
-    override fun onPasteTextFromClipboard(session: com.termux.terminal.TerminalSession?) {
+    override fun onPasteTextFromClipboard() {
         pasteFromClipboard()
     }
     
-    override fun onBell(session: com.termux.terminal.TerminalSession?) {}
+    override fun onBell() {}
     
-    override fun onColorsChanged(session: com.termux.terminal.TerminalSession?) {
+    override fun onColorsChanged() {
         mainHandler.post { invalidate() }
     }
     
@@ -832,7 +832,7 @@ class SSHTerminalView(context: Context) : View(context), TerminalSessionClient {
         mainHandler.post { invalidate() }
     }
     
-    override fun setTerminalShellPid(session: com.termux.terminal.TerminalSession?, pid: Int) {}
+    override fun setTerminalShellPid(pid: Int) {}
     
     override fun getTerminalCursorStyle(): Int? = 0
     

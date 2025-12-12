@@ -80,13 +80,3 @@ project(":language-textmate").projectDir = file("soraX/language-textmate")
 include(":baselineprofile")
 include(":benchmark")
 include(":benchmark2")
-
-// Termux terminal emulator libraries
-val termuxLibs = file("termux-libs")
-if (termuxLibs.exists()) {
-    include(":terminal-emulator")
-    project(":terminal-emulator").projectDir = file("termux-libs/terminal-emulator")
-    
-    include(":terminal-view")
-    project(":terminal-view").projectDir = file("termux-libs/terminal-view")
-}
