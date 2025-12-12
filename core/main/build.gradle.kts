@@ -128,6 +128,9 @@ dependencies {
     
     // SSH support for VPS code runner
     implementation(libs.jsch)
+    
+    // Termux terminal emulator for SSH terminal
+    implementation(project(":terminal-view"))
 }
 
 abstract class GenerateSupportedLocales : DefaultTask() {

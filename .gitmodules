@@ -1,3 +1,6 @@
 [submodule "soraX"]
 	path = soraX
 	url = https://github.com/RohitKushvaha01/soraX.git
+[submodule "termux-libs"]
+	path = termux-libs
+	url = https://github.com/termux/termux-app.git
