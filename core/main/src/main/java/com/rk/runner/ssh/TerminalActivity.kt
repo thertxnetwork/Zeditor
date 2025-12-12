@@ -38,9 +38,11 @@ import com.rk.DefaultScope
 import com.rk.theme.XedTheme
 import com.rk.settings.Settings
 import com.rk.settings.ssh.TerminalThemes
-import com.termux.terminal.TerminalBuffer
+// ReTerminal library imports (from com.github.RohitKushvaha01.ReTerminal)
 import com.termux.terminal.TerminalEmulator
 import com.termux.terminal.TerminalOutput
+import com.termux.terminal.TerminalSession
+import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalRenderer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
